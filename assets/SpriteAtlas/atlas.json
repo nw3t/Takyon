@@ -1,0 +1,220 @@
+{
+    "software": {
+        "name": "rTexPacker v5.5",
+        "url": "https://www.raylibtech.com/rtexpacker"
+    },
+    "atlas": {
+        "imagePath": "atlas.png",
+        "width": 128,
+        "height": 128,
+        "spriteCount": 17,
+        "isFont": false,
+        "fontSize": 32
+    },
+    "sprites": [
+        {
+            "nameId": "BlackCap",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 0, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 15, "height": 15 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "BlackFlat",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 16, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 15, "height": 15 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "BlackPip",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 104, "y": 16 },
+            "sourceSize": { "width": 4, "height": 4 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 3, "height": 3 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "BlackSideCap",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 32, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 2, "y": 8, "width": 13, "height": 8 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "BlackSideFlat",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 48, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 2, "y": 10, "width": 13, "height": 6 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "BlackSideStanding",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 64, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 6, "y": 3, "width": 6, "height": 13 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "BlackStanding",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 80, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 4, "y": 1, "width": 9, "height": 15 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "GoldPip",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 96, "y": 16 },
+            "sourceSize": { "width": 4, "height": 4 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 3, "height": 3 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "StoneBag",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 96, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 15, "height": 15 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "StoneCounter",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 112, "y": 0 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 9, "width": 15, "height": 7 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "WhiteCap",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 0, "y": 16 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 15, "height": 15 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "WhiteFlat",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 16, "y": 16 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 15, "height": 15 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "WhitePip",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 100, "y": 16 },
+            "sourceSize": { "width": 4, "height": 4 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 1, "y": 1, "width": 3, "height": 3 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "WhiteSideCap",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 32, "y": 16 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 2, "y": 8, "width": 13, "height": 8 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "WhiteSideFlat",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 48, "y": 16 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 2, "y": 10, "width": 13, "height": 6 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "WhiteSideStanding",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 64, "y": 16 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 6, "y": 3, "width": 6, "height": 13 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        },
+        {
+            "nameId": "WhiteStanding",
+            "tag": "",
+            "origin": { "x": 0, "y": 0 },
+            "position": { "x": 80, "y": 16 },
+            "sourceSize": { "width": 16, "height": 16 },
+            "padding": 0,
+            "trimmed": false,
+            "trimRec": { "x": 4, "y": 1, "width": 9, "height": 15 },
+            "colliderType": 0,
+            "colliderInfo": { "x": 0, "y": 0, "sizeX": 0, "sizeY": 0 }
+        }
+    ]
+}
