@@ -450,7 +450,7 @@ def square_scale(surface: pygame.Surface, new_size: float) -> pygame.Surface:
 def count_and_push_pips_to_render(
     stones: int,
     capstones: int,
-    render_params: RenderingParams,
+    renders: RenderingParams,
     stone_type: StoneType,
     pip_rect: pygame.Rect,
     scaled_pip: pygame.Surface,
@@ -459,7 +459,7 @@ def count_and_push_pips_to_render(
     do a little loop to neatly align pip stone counters in a grid
     :param stones:
     :param capstones:
-    :param render_params:
+    :param renders:
     :param stone_type: if we're doing capstones we need to know to offset by total pips
     :param pip_rect:
     :param scaled_pip:
@@ -477,7 +477,7 @@ def count_and_push_pips_to_render(
         x_movement = pip_base_move + pip_gap_move
 
         pip_translation = pip_rect.move(x_movement, -y_movement)
-        render_params.render_queue.append(Render(scaled_pip, pip_translation))
+        renders.render_queue.append(Render(scaled_pip, pip_translation))
 
 def set_up_game(
     canvas: pygame.Surface,
