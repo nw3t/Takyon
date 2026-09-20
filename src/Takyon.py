@@ -15,8 +15,6 @@ Missouri Historical Society identifier: 2000-018-0089, No restrictions
 
 from __future__ import annotations  # the ability to order freely
 
-DELETE_ME = 1
-
 import json
 import pygame
 import sys
@@ -90,13 +88,17 @@ class StoneCount:
 
 class SpriteInfo(pygame.sprite.Sprite):
     """
-    Mutable sprite data
+    Mutable sprite data. Each sprit contains a .type, .sprite and .rect
     """
+
+    type: SpriteType
+    sprite: pygame.Surface
+    rect: pygame.Rect
 
     def __init__(
         self,
         sprite_type: SpriteType,
-        sprite: Path,
+        sprite: pygame.Surface,
         rect: pygame.Rect,
         *groups: pygame.sprite.AbstractGroup,
     ):
@@ -105,24 +107,29 @@ class SpriteInfo(pygame.sprite.Sprite):
             "will cause some nasty dup issues."
         )
         super().__init__(*groups)
-        self.type = sprite_type
-        self.sprite = sprite
-        self.rect = rect
+        self.type: SpriteType = sprite_type
+        self.sprite: pygame.Surface = sprite
+        self.rect: pygame.Rect = rect
 
 
 def spawn(
-    state: GameState, sprite_type: SpriteType, sprite: Path, rect: pygame.Rect
+    state: GameState,
+    textures: dict[Texture, pygame.Surface],
+    sprite_type: SpriteType,
+    texture: Texture,
+    rect: pygame.Rect,
 ) -> SpriteID:
     """
     Use this to make new sprites, no other constructor
     :param state:
+    :param textures:
     :param sprite_type:
-    :param sprite:
+    :param texture:
     :param rect:
     :return:
     """
-    sprite_id = SpriteID(next(NEXT_ID))
-    info = SpriteInfo(sprite_type, sprite, rect)
+    sprite_id: SpriteID = SpriteID(next(NEXT_ID))
+    info: SpriteInfo = SpriteInfo(sprite_type, textures[texture], rect)
     state.sprites[sprite_id] = info
     state.sprites_by_type[sprite_type].add(info)
     return sprite_id
@@ -174,7 +181,6 @@ class RenderingParams:
     canvas: pygame.Surface
     clock: pygame.time.Clock
     display_target: pygame.Rect
-    render_queue: RenderQueue
     window: pygame.Surface
 
 
@@ -225,22 +231,22 @@ SINGLES_DIR = ROOT_DIR / "assets" / "Singles"
 
 BLACK = (0, 0, 0)
 
-WINDOW_W = 1920
-WINDOW_H = 1080
+WINDOW_W: int = 1920
+WINDOW_H: int = 1080
 
-BOARD_SIZE = 980
-TILE_SPACER = 20
-UI_SPACER = 40
+BOARD_SIZE: int = 980
+TILE_SPACER: int = 20
+UI_SPACER: int = 40
 
-PIP_SCALE = 20
-PIP_SPACER = 18
-PIP_GAP = 8
-PIP_CLUSTER = 5
-PIP_LINE = 15
+PIP_SCALE: int = 20
+PIP_SPACER: int = 18
+PIP_GAP: int = 8
+PIP_CLUSTER: int = 5
+PIP_LINE: int = 15
 
-COUNTER_UI_SCALE_RATIO = 2.5
+COUNTER_UI_SCALE_RATIO: float = 2.5
 
-STONE_COVERAGE = 0.9  # As a percentage of tile size
+STONE_COVERAGE: float = 0.9  # As a percentage of tile size
 
 NEXT_ID: Iterator[int] = count(0)
 
@@ -264,8 +270,8 @@ def main():
 
     clock: pygame.time.Clock = pygame.time.Clock()
     board_choice: Dimension = 6
-    stones = BOARD_DIMS[board_choice].stones
-    capstones = BOARD_DIMS[board_choice].capstones
+    stones: int = BOARD_DIMS[board_choice].stones
+    capstones: int = BOARD_DIMS[board_choice].capstones
     stone_count: StoneCount = StoneCount(
         black=Stones(stones, capstones),
         white=Stones(stones, capstones),
@@ -273,13 +279,11 @@ def main():
     board_state: BoardState = {}
     sprites: Sprites = {}
     sprites_by_type: SpritesByType = defaultdict(pygame.sprite.Group)
-    render_queue: RenderQueue = RenderQueue()
     render_params: RenderingParams = RenderingParams(
         window=window,
         canvas=canvas,
         display_target=display_target,
         clock=clock,
-        render_queue=render_queue,
     )
     game_state: GameState = GameState(
         sprites=sprites,
@@ -313,94 +317,92 @@ def main():
         rect = pygame.Rect(x, y, w, h)
         textures[name] = atlas.subsurface(rect)
 
+    # All static and non-moving elements
+    draw_board(game_state, render_params, textures)
+
+    # This is just a pass right now, it should spawn game objects and their
+    # sprites, tracking them in state
+    set_up_game(game_state, textures)
     game_loop(game_state, render_params, textures)
 
 
-def show_stone_count(
+def spawn_stone_counters(
     state: GameState,
-    rendering: RenderingParams,
+    renders: RenderingParams,
     textures: dict[Texture, pygame.Surface],
 ) -> None:
     """
     :param state:
-    :param rendering:
+    :param renders:
     :param textures:
     """
-    board_size = textures[
-        Texture.BOARD
-    ].get_width()  # square board, only one dim needed
-    board_bounds = textures[Texture.BOARD].get_rect()
-    board_bounds.center = rendering.canvas.get_rect().center
+    board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
+    board_bounds.center = renders.canvas.get_rect().center
 
-    counter_scale = board_size / COUNTER_UI_SCALE_RATIO
+    counter_scale: int = round(BOARD_SIZE / COUNTER_UI_SCALE_RATIO)
     pip_offset: tuple[int, int] = (48, -55)
 
-    scaled_counter: pygame.Surface = square_scale(
-        textures[Texture.STONE_COUNTER], counter_scale
-    )
-    black_counter_rect: pygame.Rect = scaled_counter.get_rect(
-        bottomright=board_bounds.move(-UI_SPACER, 0).midleft
-    )
-    rendering.render_queue.append(
-        Render(surface=scaled_counter, rect=black_counter_rect)
+    black_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
+    white_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
+
+    black_counter_rect.bottomleft = board_bounds.move(UI_SPACER, 0).midright
+    white_counter_rect.bottomright = board_bounds.move(-UI_SPACER, 0).midleft
+
+    spawn(state, textures, SpriteType.UI, Texture.STONE_COUNTER, white_counter_rect)
+    spawn(state, textures, SpriteType.UI, Texture.STONE_COUNTER, black_counter_rect)
+
+    pip_rect_black: pygame.Rect = pygame.Rect(0, 0, PIP_SCALE, PIP_SCALE)
+    pip_rect_white: pygame.Rect = pygame.Rect(0, 0, PIP_SCALE, PIP_SCALE)
+    pip_rect_black.bottomleft = black_counter_rect.move(pip_offset).bottomleft
+    pip_rect_white.bottomleft = white_counter_rect.move(pip_offset).bottomleft
+
+    count_and_spawn_pips(state, textures, pip_rect_black, pip_rect_white)
+
+
+def count_and_spawn_pips(
+    state: GameState,
+    textures: dict[Texture, pygame.Surface],
+    pip_rect_black: pygame.Rect,
+    pip_rect_white: pygame.Rect,
+) -> None:
+    """
+    spawn all pips aligned on the grid at game start
+    :param state:
+    :param textures:
+    :param pip_rect_black:
+    :param pip_rect_white:
+    :return:
+    """
+
+    players = (
+        (
+            state.stone_count.black.stones,
+            state.stone_count.black.capstones,
+            Texture.BLACK_PIP,
+            pip_rect_black,
+        ),
+        (
+            state.stone_count.white.stones,
+            state.stone_count.white.capstones,
+            Texture.WHITE_PIP,
+            pip_rect_white,
+        ),
     )
 
-    right_counter_rect: pygame.Rect = scaled_counter.get_rect(
-        bottomleft=board_bounds.move(UI_SPACER, 0).midright
-    )
-    rendering.render_queue.append(Render(scaled_counter, right_counter_rect))
+    for stones, capstones, texture, pip_rect in players:
+        for pips in range(stones + capstones):
 
-    scaled_white_pip: pygame.Surface = square_scale(
-        textures[Texture.WHITE_PIP], PIP_SCALE
-    )
-    white_pip_rect: pygame.Rect = scaled_white_pip.get_rect(
-        bottomleft=black_counter_rect.move(pip_offset).bottomleft
-    )
+            row: int = pips // PIP_LINE
+            col: int = pips % PIP_LINE
+            y_movement: int = row * PIP_SPACER
+            pip_base_move: int = col * PIP_SPACER
+            pip_gap_move: int = (col // PIP_CLUSTER) * PIP_GAP
+            x_movement: int = pip_base_move + pip_gap_move
 
-    scaled_black_pip = square_scale(textures[Texture.BLACK_PIP], PIP_SCALE)
-    black_pip_rect = scaled_black_pip.get_rect(
-        bottomleft=right_counter_rect.move(pip_offset).bottomleft
-    )
+            pip_texture: Texture = texture if pips < stones else Texture.GOLD_PIP
 
-    scaled_cap_pip = square_scale(textures[Texture.GOLD_PIP], PIP_SCALE)
-
-    black_stones = state.stone_count.black.stones
-    white_stones = state.stone_count.white.stones
-    black_caps = state.stone_count.black.capstones
-    white_caps = state.stone_count.white.capstones
-
-    count_and_push_pips_to_render(
-        black_stones,
-        black_caps,
-        rendering,
-        StoneType.STONE,
-        black_pip_rect,
-        scaled_black_pip,
-    )
-    count_and_push_pips_to_render(
-        white_stones,
-        white_caps,
-        rendering,
-        StoneType.STONE,
-        white_pip_rect,
-        scaled_white_pip,
-    )
-    count_and_push_pips_to_render(
-        black_stones,
-        black_caps,
-        rendering,
-        StoneType.CAPSTONE,
-        black_pip_rect,
-        scaled_cap_pip,
-    )
-    count_and_push_pips_to_render(
-        white_stones,
-        white_caps,
-        rendering,
-        StoneType.CAPSTONE,
-        white_pip_rect,
-        scaled_cap_pip,
-    )
+            pip_translation: pygame.Rect = pip_rect.move(x_movement, -y_movement)
+            spawn(state, textures, SpriteType.PIP, pip_texture, pip_translation)
 
 
 def draw_board(
@@ -417,189 +419,162 @@ def draw_board(
     """
     #####################
     # The board and tiles are square, just need one side
-    board_bounds = textures[Texture.BOARD].get_rect()
+    board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
     board_bounds.center = renders.canvas.get_rect().center
 
+    #####################
+    # Draw the background, board, and UI counters. The order of spawning probably matters
+    bg_bounds: pygame.Rect = textures[Texture.BG].get_rect()
+    spawn(state, textures, SpriteType.UI, Texture.BG, bg_bounds)
+    spawn(state, textures, SpriteType.UI, Texture.BOARD, board_bounds)
+
+    spawn_stone_counters(state, renders, textures)
+
+    bag_scale: int= BOARD_SIZE // 4
+    stone_scale: int = bag_scale // 2
+    stone_spacer: int = bag_scale // 4
+
+    right_bag_rect: pygame.Rect = pygame.Rect(0, 0, bag_scale, bag_scale)
+    left_bag_rect: pygame.Rect = pygame.Rect(0, 0, bag_scale, bag_scale)
+    black_ui_stone: pygame.Rect = pygame.Rect(0, 0, stone_scale, stone_scale)
+    white_ui_stone: pygame.Rect = pygame.Rect(0, 0, stone_scale, stone_scale)
+
+    left_bag_rect.topright = board_bounds.move(-UI_SPACER, 0).topleft
+    right_bag_rect.topleft = board_bounds.move(UI_SPACER, 0).topright
+    spawn(state, textures, SpriteType.UI, Texture.STONE_BAG, left_bag_rect)
+    spawn(state, textures, SpriteType.UI, Texture.STONE_BAG, right_bag_rect)
+
+    black_ui_stone.center = right_bag_rect.move(0, -stone_spacer).center
+    white_ui_stone.center = left_bag_rect.move(0, -stone_spacer).center
+    spawn(state, textures, SpriteType.UI, Texture.BLACK_FLAT, black_ui_stone)
+    spawn(state, textures, SpriteType.UI, Texture.WHITE_FLAT, white_ui_stone)
+
     dimension = state.dimension
-    tile = textures[Texture.TILE]
-    board_size = board_bounds.w
-    tile_size = (board_size - (dimension + 1) * TILE_SPACER) // dimension
-    scaled_tile = pygame.transform.scale(tile, (tile_size, tile_size))
+
+    # Probably a mistake, I wanna spawn the tiles as full sprites so I can snap to them
+    tile_size = (BOARD_SIZE - (dimension + 2) * TILE_SPACER) // dimension
+    tile_rect: pygame.Rect = pygame.Rect(0, 0, tile_size, tile_size)
+    tile_rect.topleft = board_bounds.topleft
     for col in range(dimension):
         for row in range(dimension):
-            renders.render_queue.append(
-                Render(
-                    scaled_tile,
-                    (
-                        board_bounds.move(
-                            TILE_SPACER + (tile_size + TILE_SPACER) * col,
-                            TILE_SPACER + (tile_size + TILE_SPACER) * row,
-                        )
-                    ),
-                )
+            spawn(
+                state,
+                textures,
+                SpriteType.TILE,
+                Texture.TILE,
+                tile_rect.move(
+                    TILE_SPACER + (tile_size + TILE_SPACER) * col,
+                    TILE_SPACER + (tile_size + TILE_SPACER) * row,
+                ),
             )
 
 
-def square_scale(surface: pygame.Surface, new_size: float) -> pygame.Surface:
-    """
-    Scale a sprite to a square
-    :param surface:
-    :param new_size:
-    :return:
-    """
-    return pygame.transform.scale(surface, (new_size, new_size))
-
-
-def count_and_push_pips_to_render(
-    stones: int,
-    capstones: int,
-    renders: RenderingParams,
-    stone_type: StoneType,
-    pip_rect: pygame.Rect,
-    scaled_pip: pygame.Surface,
-) -> None:
-    """
-    do a little loop to neatly align pip stone counters in a grid
-    :param stones:
-    :param capstones:
-    :param renders:
-    :param stone_type: if we're doing capstones we need to know to offset by total pips
-    :param pip_rect:
-    :param scaled_pip:
-    :return:
-    """
-
-    for pips in range(stones if stone_type == StoneType.STONE else capstones):
-        stone_count: int = pips + stones if stone_type == StoneType.CAPSTONE else pips
-
-        y_movement = PIP_SPACER * (stone_count // PIP_LINE)
-        pip_base_move = (stone_count % PIP_LINE) * PIP_SPACER
-        pip_gap_move = ((stone_count % PIP_LINE) // PIP_CLUSTER) * PIP_GAP
-        x_movement = pip_base_move + pip_gap_move
-
-        pip_translation = pip_rect.move(x_movement, -y_movement)
-        renders.render_queue.append(Render(scaled_pip, pip_translation))
-
-
 def set_up_game(
-    renders: RenderingParams,
+    state: GameState,
     textures: dict[Texture, pygame.Surface],
 ) -> None:
     """
-    Edit this to only spawn initial sprites
-    :param renders:
+    Spawn initial game objects
+    :param state:
     :param textures:
     :return:
     """
+    pass
 
-    board_bounds = textures[Texture.BOARD].get_rect()
-    board_size = board_bounds.w
-    board_bounds.center = renders.canvas.get_rect().center
 
-    bag_scale = board_size / 4
-    stone_scale = bag_scale / 2
-    stone_spacer = bag_scale / 4
+def user_inputs(
+    renders: RenderingParams,
+):
+    """
+    take user inputs and respond
+    :param renders:
+    :return:
+    """
 
-    scaled_bag = square_scale(textures[Texture.STONE_BAG], bag_scale)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        if event.type == pygame.WINDOWRESIZED:
+            window_w: int = event.x
+            window_h: int = event.y
 
-    left_bag_rect = scaled_bag.get_rect(
-        topright=board_bounds.move(-UI_SPACER, 0).topleft
+            scale: int | float = min(window_w / WINDOW_W, window_h / WINDOW_H)
+            scaled_canvas_w: int = int(WINDOW_W * scale)
+            scaled_canvas_h: int = int(WINDOW_H * scale)
+
+            renders.display_target = pygame.Rect(0, 0, scaled_canvas_w, scaled_canvas_h)
+            renders.display_target.center = (window_w // 2, window_h // 2)
+
+
+def mouse_on_canvas(
+    renders: RenderingParams,
+) -> tuple[int, int]:
+    """
+    convert the window mouse to a scaled canvas mouse
+    :param renders:
+    :return:
+    """
+    raw_mouse_pos: tuple[int, int] = pygame.mouse.get_pos()
+    canvas_mouse_x: int = (raw_mouse_pos[0] - renders.display_target.x) * (
+        WINDOW_W // renders.display_target.width
     )
-    renders.render_queue.append(Render(scaled_bag, left_bag_rect))
-
-    right_bag_rect = scaled_bag.get_rect(
-        topleft=board_bounds.move(UI_SPACER, 0).topright
+    canvas_mouse_y: int = (raw_mouse_pos[1] - renders.display_target.y) * (
+        WINDOW_H // renders.display_target.height
     )
-    renders.render_queue.append(Render(scaled_bag, right_bag_rect))
-
-    scaled_black_stone = square_scale(textures[Texture.BLACK_FLAT], stone_scale)
-    black_stone_rect = scaled_black_stone.get_rect(
-        center=right_bag_rect.move(0, -stone_spacer).center
-    )
-    renders.render_queue.append(Render(scaled_black_stone, black_stone_rect))
-
-    scaled_white_stone = square_scale(textures[Texture.WHITE_FLAT], stone_scale)
-    white_stone_rect = scaled_white_stone.get_rect(
-        center=left_bag_rect.move(0, -stone_spacer).center
-    )
-    renders.render_queue.append(Render(scaled_white_stone, white_stone_rect))
+    return canvas_mouse_x, canvas_mouse_y
 
 
 def game_loop(
     state: GameState,
-    rendering: RenderingParams,
+    renders: RenderingParams,
     textures: dict[Texture, pygame.Surface],
 ) -> None:
     """
     main game loop silly
     :param state:
-    :param rendering:
+    :param renders:
     :param textures:
     :return:
     """
     while True:
 
-        raw_mouse_pos = pygame.mouse.get_pos()
-        rendering.window.fill(BLACK)
+        # This can resize the window and close the game, so it comes first
+        user_inputs(renders)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.WINDOWRESIZED:
-                window_w = event.x
-                window_h = event.y
+        # canvas_mouse = mouse_on_canvas(renders)
 
-                scale = min(window_w / WINDOW_W, window_h / WINDOW_H)
-                scaled_canvas_w = int(WINDOW_W * scale)
-                scaled_canvas_h = int(WINDOW_H * scale)
-
-                rendering.display_target = pygame.Rect(
-                    0, 0, scaled_canvas_w, scaled_canvas_h
-                )
-                rendering.display_target.center = (window_w // 2, window_h // 2)
-        canvas_mouse = (
-            (raw_mouse_pos[0] - rendering.display_target.x)
-            * (WINDOW_W / rendering.display_target.width),
-            (raw_mouse_pos[1] - rendering.display_target.y)
-            * (WINDOW_H / rendering.display_target.height),
-        )
-        global DELETE_ME
-        if DELETE_ME == 1:
-            print(canvas_mouse)
-            DELETE_ME = 0
-        background_bounds = textures[Texture.BG].get_rect()
-        rendering.canvas.blit(textures[Texture.BG])
-
-        board_bounds = textures[Texture.BOARD].get_rect()
-        board_bounds.center = background_bounds.center
-        rendering.canvas.blit(textures[Texture.BOARD], board_bounds)
-
-        draw_board(
-            state, rendering, textures
-        )
-        set_up_game(rendering, textures)
-        show_stone_count(state, rendering, textures)
-        blit_render_queue(rendering)
-        scaled_canvas = pygame.transform.scale(
-            rendering.canvas,
-            (rendering.display_target.width, rendering.display_target.height),
-        )
-        rendering.window.blit(scaled_canvas, rendering.display_target)
-        pygame.display.flip()
-
-        rendering.clock.tick(60)
+        render_sprites(state, renders)
 
 
-def blit_render_queue(rendering: RenderingParams) -> None:
+def render_sprites(state: GameState, renders: RenderingParams) -> None:
     """
-    Run through the render queue, consume and blit it
-    :param rendering:
+    Run through the sprites in the game and blit them
+    :param state:
+    :param renders:
+    counter_scale = BOARD_SIZE // COUNTER_UI_SCALE_RATIO
+    pip_offset: tuple[int, int] = (48, -55)
+
+    black_counter_rect: pygame.Rect = pygame.Rect(x=0,y=0,width=counter_scale,height=counter_scale)
+    black_counter_rect.bottomright = board_bounds.move(-UI_SPACER, 0).midleft
     :return:
     """
-    for each in rendering.render_queue:
-        rendering.canvas.blit(each.surface, each.rect)
-    rendering.render_queue.clear()
+    renders.window.fill(BLACK)
+    for sid in state.sprites:
+        rect: pygame.Rect = state.sprites[sid].rect
+        sprite: pygame.Surface = pygame.transform.scale(
+            state.sprites[sid].sprite, rect.size
+        )
+        renders.canvas.blit(sprite, rect)
+
+    scaled_canvas: pygame.Surface = pygame.transform.scale(
+        renders.canvas,
+        (renders.display_target.width, renders.display_target.height),
+    )
+
+    renders.window.blit(scaled_canvas, renders.display_target)
+    pygame.display.flip()
+    renders.clock.tick(60)
 
 
 if __name__ == "__main__":
