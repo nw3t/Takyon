@@ -47,6 +47,15 @@ class SpriteType(Enum):
     STONE = auto()
 
 
+TYPE_Z_LAYERS = {
+    SpriteType.BOARD: 0,
+    SpriteType.UI: 1,
+    SpriteType.PIP: 2,
+    SpriteType.TILE: 2,
+    SpriteType.STONE: 3,
+}
+
+
 class Player(Enum):
     """
     Used for telling whose turn it is, or none if not playing a match
@@ -94,12 +103,16 @@ class SpriteInfo(pygame.sprite.Sprite):
     type: SpriteType
     sprite: pygame.Surface
     rect: pygame.Rect
+    texture: Texture
+    z_order: int
 
     def __init__(
         self,
         sprite_type: SpriteType,
         sprite: pygame.Surface,
         rect: pygame.Rect,
+        texture: Texture,
+        z_order: int,
         *groups: pygame.sprite.AbstractGroup,
     ):
         assert not groups, (
@@ -110,6 +123,8 @@ class SpriteInfo(pygame.sprite.Sprite):
         self.type: SpriteType = sprite_type
         self.sprite: pygame.Surface = sprite
         self.rect: pygame.Rect = rect
+        self.texture: Texture = texture
+        self.z_order: int = z_order
 
 
 def spawn(
@@ -118,6 +133,7 @@ def spawn(
     sprite_type: SpriteType,
     texture: Texture,
     rect: pygame.Rect,
+    z_order: int = 0,
 ) -> SpriteID:
     """
     Use this to make new sprites, no other constructor
@@ -126,10 +142,12 @@ def spawn(
     :param sprite_type:
     :param texture:
     :param rect:
+    :param z_order:
     :return:
     """
     sprite_id: SpriteID = SpriteID(next(NEXT_ID))
-    info: SpriteInfo = SpriteInfo(sprite_type, textures[texture], rect)
+    scaled_sprite = pygame.transform.scale(textures[texture], rect.size)
+    info: SpriteInfo = SpriteInfo(sprite_type, scaled_sprite, rect, texture, z_order)
     state.sprites[sprite_id] = info
     state.sprites_by_type[sprite_type].add(info)
     return sprite_id
@@ -318,7 +336,7 @@ def main():
         textures[name] = atlas.subsurface(rect)
 
     # All static and non-moving elements
-    draw_board(game_state, render_params, textures)
+    spawn_board(game_state, render_params, textures)
 
     # This is just a pass right now, it should spawn game objects and their
     # sprites, tracking them in state
@@ -405,7 +423,7 @@ def count_and_spawn_pips(
             spawn(state, textures, SpriteType.PIP, pip_texture, pip_translation)
 
 
-def draw_board(
+def spawn_board(
     state: GameState,
     renders: RenderingParams,
     textures: dict[Texture, pygame.Surface],
@@ -425,12 +443,12 @@ def draw_board(
     #####################
     # Draw the background, board, and UI counters. The order of spawning probably matters
     bg_bounds: pygame.Rect = textures[Texture.BG].get_rect()
-    spawn(state, textures, SpriteType.UI, Texture.BG, bg_bounds)
-    spawn(state, textures, SpriteType.UI, Texture.BOARD, board_bounds)
+    spawn(state, textures, SpriteType.BOARD, Texture.BG, bg_bounds)
+    spawn(state, textures, SpriteType.BOARD, Texture.BOARD, board_bounds, 1)
 
     spawn_stone_counters(state, renders, textures)
 
-    bag_scale: int= BOARD_SIZE // 4
+    bag_scale: int = BOARD_SIZE // 4
     stone_scale: int = bag_scale // 2
     stone_spacer: int = bag_scale // 4
 
@@ -552,19 +570,14 @@ def render_sprites(state: GameState, renders: RenderingParams) -> None:
     Run through the sprites in the game and blit them
     :param state:
     :param renders:
-    counter_scale = BOARD_SIZE // COUNTER_UI_SCALE_RATIO
-    pip_offset: tuple[int, int] = (48, -55)
-
-    black_counter_rect: pygame.Rect = pygame.Rect(x=0,y=0,width=counter_scale,height=counter_scale)
-    black_counter_rect.bottomright = board_bounds.move(-UI_SPACER, 0).midleft
     :return:
     """
     renders.window.fill(BLACK)
-    for sid in state.sprites:
-        rect: pygame.Rect = state.sprites[sid].rect
-        sprite: pygame.Surface = pygame.transform.scale(
-            state.sprites[sid].sprite, rect.size
-        )
+    for sprite_info in sorted(
+        state.sprites.values(), key=lambda s: (TYPE_Z_LAYERS[s.type], s.z_order)
+    ):
+        rect: pygame.Rect = sprite_info.rect
+        sprite: pygame.Surface = sprite_info.sprite
         renders.canvas.blit(sprite, rect)
 
     scaled_canvas: pygame.Surface = pygame.transform.scale(
