@@ -164,6 +164,10 @@ def despawn(state: GameState, sprite_id: SpriteID) -> None:
     del state.sprites[sprite_id]
 
 
+TimeRemaining = float
+Timer = dict[Player, TimeRemaining]
+
+
 @dataclass
 class GameState:
     """
@@ -175,6 +179,8 @@ class GameState:
     board: BoardState
     dimension: Dimension
     stone_count: StoneCount
+    active_player: Player
+    timer: Timer
 
 
 @dataclass
@@ -229,6 +235,11 @@ class Texture(Enum):
     WHITE_STANDING = "WhiteStanding"
 
 
+SEE_THROUGH_TEXTURES: tuple[Texture, Texture] = (
+    Texture.WHITE_STANDING,
+    Texture.BLACK_STANDING,
+)
+
 BoardSetup = dict[Dimension, Stones]
 Sprites = dict[SpriteID, SpriteInfo]
 SpritesByType = dict[SpriteType, pygame.sprite.Group]
@@ -268,6 +279,8 @@ STONE_COVERAGE: float = 0.9  # As a percentage of tile size
 
 NEXT_ID: Iterator[int] = count(0)
 
+TIMER_START_SECONDS = 900.0
+
 
 #####################
 # ENTRY POINT HERE BAYBEEEEE
@@ -287,6 +300,11 @@ def main():
     display_target: pygame.Rect = pygame.Rect(0, 0, WINDOW_W, WINDOW_H)
 
     clock: pygame.time.Clock = pygame.time.Clock()
+    timer: Timer = {
+        Player.BLACK: TIMER_START_SECONDS,
+        Player.WHITE: TIMER_START_SECONDS,
+    }
+    clock_font = pygame.font.SysFont("courier new", 48)
     board_choice: Dimension = 6
     stones: int = BOARD_DIMS[board_choice].stones
     capstones: int = BOARD_DIMS[board_choice].capstones
@@ -309,6 +327,8 @@ def main():
         board=board_state,
         dimension=board_choice,
         stone_count=stone_count,
+        active_player=Player.WHITE,
+        timer=timer,
     )
 
     #####################
@@ -435,13 +455,9 @@ def spawn_board(
     :param textures:
     :return:
     """
-    #####################
-    # The board and tiles are square, just need one side
     board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
     board_bounds.center = renders.canvas.get_rect().center
 
-    #####################
-    # Draw the background, board, and UI counters. The order of spawning probably matters
     bg_bounds: pygame.Rect = textures[Texture.BG].get_rect()
     spawn(state, textures, SpriteType.BOARD, Texture.BG, bg_bounds)
     spawn(state, textures, SpriteType.BOARD, Texture.BOARD, board_bounds, 1)
@@ -573,12 +589,25 @@ def render_sprites(state: GameState, renders: RenderingParams) -> None:
     :return:
     """
     renders.window.fill(BLACK)
+
+    non_stones = (s for s in state.sprites.values() if s.type != SpriteType.STONE)
+
     for sprite_info in sorted(
-        state.sprites.values(), key=lambda s: (TYPE_Z_LAYERS[s.type], s.z_order)
+        non_stones, key=lambda s: (TYPE_Z_LAYERS[s.type], s.z_order)
     ):
         rect: pygame.Rect = sprite_info.rect
         sprite: pygame.Surface = sprite_info.sprite
         renders.canvas.blit(sprite, rect)
+
+    for sprite_list in state.board.values():
+        if not sprite_list:
+            continue
+        top = sprite_list[-1]
+        second = sprite_list[-2] if len(sprite_list) >= 2 else None
+
+        if second and top.texture in SEE_THROUGH_TEXTURES:
+            renders.canvas.blit(second.sprite, second.rect)
+        renders.canvas.blit(top.sprite, top.rect)
 
     scaled_canvas: pygame.Surface = pygame.transform.scale(
         renders.canvas,
