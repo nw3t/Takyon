@@ -262,7 +262,7 @@ def main():
     display_target: pygame.Rect = pygame.Rect(0, 0, WINDOW_W, WINDOW_H)
 
     clock: pygame.time.Clock = pygame.time.Clock()
-    board_choice: Dimension = 8
+    board_choice: Dimension = 6
     stones = BOARD_DIMS[board_choice].stones
     capstones = BOARD_DIMS[board_choice].capstones
     stone_count: StoneCount = StoneCount(
@@ -319,12 +319,11 @@ def show_stone_count(
     state: GameState,
     rendering: RenderingParams,
     textures: dict[Texture, pygame.Surface],
-):
+) -> None:
     """
     :param state:
     :param rendering:
     :param textures:
-    :return:
     """
     board_size = textures[
         Texture.BOARD
@@ -333,22 +332,20 @@ def show_stone_count(
     board_bounds.center = rendering.canvas.get_rect().center
 
     counter_scale = board_size / COUNTER_UI_SCALE_RATIO
-    half_counter_scale = counter_scale / 2
-    counter_spacer = UI_SPACER - half_counter_scale
     pip_offset: tuple[int,int] = (48,-55)
 
     scaled_counter: pygame.Surface = square_scale(
         textures[Texture.STONE_COUNTER], counter_scale
     )
     black_counter_rect: pygame.Rect = scaled_counter.get_rect(
-        bottomright=board_bounds.move(0, counter_spacer).bottomleft
+        bottomright=board_bounds.move(-UI_SPACER, 0).midleft
     )
     rendering.render_queue.append(
         Render(surface=scaled_counter, rect=black_counter_rect)
     )
 
     right_counter_rect: pygame.Rect = scaled_counter.get_rect(
-        bottomleft=board_bounds.move(0, counter_spacer).bottomright
+        bottomleft=board_bounds.move(UI_SPACER, 0).midright
     )
     rendering.render_queue.append(Render(scaled_counter, right_counter_rect))
 
