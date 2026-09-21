@@ -180,7 +180,7 @@ def spawn(
     :param sprite_type:
     :param texture:
     :param rect:
-    :param z_order:one = None,
+    :param z_order:
     :param player:
     :return:
     """
