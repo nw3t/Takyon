@@ -24,7 +24,7 @@ from collections.abc import Iterator
 from enum import Enum, auto
 from itertools import count
 from pathlib import Path
-from typing import Literal, NewType
+from typing import Literal, NewType, Callable
 from collections import defaultdict
 
 Dimension = Literal[3, 4, 5, 6, 8]
@@ -97,6 +97,36 @@ class StoneCount:
     white: Stones
 
 
+class Interactable(Enum):
+    """
+    The types of things you can interact with
+    """
+
+    STONE_BAG = auto()
+    TILE = auto()
+    CLOCK = auto()
+    STONE_COUNTER = auto()
+    MENU_BUTTON = auto()
+    MUSIC_BUTTON = auto()
+    UNDO_BUTTON = auto()
+    PLANNING_BUTTON = auto()
+
+
+class InteractionType(Enum):
+    """
+    The types of things you can do with interactables
+    """
+
+    LEFT_CLICK = auto()
+    RIGHT_CLICK = auto()
+    LEFT_DRAG_START = auto()
+    LEFT_DRAG_STOP = auto()
+    RIGHT_DRAG_START = auto()
+    RIGHT_DRAG_STOP = auto()
+    HOVER_ENTER = auto()
+    HOVER_EXIT = auto()
+
+
 class SpriteInfo(pygame.sprite.Sprite):
     """
     Mutable sprite data. Each sprit contains a .type, .sprite and .rect
@@ -108,6 +138,8 @@ class SpriteInfo(pygame.sprite.Sprite):
     texture: Texture | None
     z_order: int
     player: Player | None
+    interactable: Interactable | None
+    tooltip: str | None
 
     def __init__(
         self,
@@ -117,6 +149,8 @@ class SpriteInfo(pygame.sprite.Sprite):
         texture: Texture | None,
         z_order: int,
         player: Player | None,
+        interactable: Interactable | None,
+        tooltip: str | None,
         *groups: pygame.sprite.AbstractGroup,
     ):
         assert not groups, (
@@ -129,6 +163,8 @@ class SpriteInfo(pygame.sprite.Sprite):
         self.rect: pygame.Rect = rect
         self.texture: Texture | None = texture
         self.player: Player | None = player
+        self.interactable: Interactable | None = interactable
+        self.tooltip: str | None = tooltip
         self.z_order: int = z_order
 
 
@@ -139,6 +175,8 @@ def spawn_from_surface(
     rect: pygame.Rect,
     z_order: int = 0,
     player: Player | None = None,
+    interactable: Interactable | None = None,
+    tooltip: str | None = None,
 ) -> SpriteID:
     """
     If the sprite has its own generated surface instead of a texture map
@@ -148,6 +186,8 @@ def spawn_from_surface(
     :param rect:
     :param z_order:
     :param player:
+    :param interactable:
+    :param tooltip:
     :return:
     """
     sprite_id = SpriteID(next(NEXT_ID))
@@ -158,6 +198,8 @@ def spawn_from_surface(
         texture=None,
         z_order=z_order,
         player=player,
+        interactable=interactable,
+        tooltip=tooltip,
     )
     state.sprites[sprite_id] = info
     state.sprites_by_type[sprite_type].add(info)
@@ -172,6 +214,8 @@ def spawn(
     rect: pygame.Rect,
     z_order: int = 0,
     player: Player | None = None,
+    interactable: Interactable | None = None,
+    tooltip: str | None = None,
 ) -> SpriteID:
     """
     Use this to make new sprites, no other constructor
@@ -182,12 +226,14 @@ def spawn(
     :param rect:
     :param z_order:
     :param player:
+    :param interactable:
+    :param tooltip:
     :return:
     """
     sprite_id: SpriteID = SpriteID(next(NEXT_ID))
     scaled_sprite = pygame.transform.scale(textures[texture], rect.size)
     info: SpriteInfo = SpriteInfo(
-        sprite_type, scaled_sprite, rect, texture, z_order, player
+        sprite_type, scaled_sprite, rect, texture, z_order, player, interactable, tooltip
     )
     state.sprites[sprite_id] = info
     state.sprites_by_type[sprite_type].add(info)
@@ -222,6 +268,7 @@ class GameState:
     stone_count: StoneCount
     active_player: Player
     timer: Timer
+    input_state: InputState
 
 
 @dataclass
@@ -237,6 +284,7 @@ class RenderingParams:
     window: pygame.Surface
     clock_font: pygame.font.Font
     clock_time: int
+    textures: dict[Texture, pygame.Surface]
 
 
 class Texture(Enum):
@@ -273,10 +321,21 @@ SEE_THROUGH_TEXTURES: tuple[Texture, Texture] = (
     Texture.BLACK_STANDING,
 )
 
+@dataclass
+class InputState:
+    """
+    Trackables required for input
+    """
+    hovered_sprites: set[SpriteID]
+    dragged_sprite: SpriteID | None
+    last_click_time: int
+    last_clicked_sprite: SpriteID | None
+
 BoardSetup = dict[Dimension, Stones]
 Sprites = dict[SpriteID, SpriteInfo]
 SpritesByType = dict[SpriteType, pygame.sprite.Group]
 BoardState = dict[tuple[int, int], list[SpriteInfo]]
+InteractionCallback = Callable[[GameState, SpriteID], None]
 
 BOARD_DIMS: BoardSetup = {
     3: Stones(stones=10, capstones=0),
@@ -294,6 +353,7 @@ SINGLES_DIR = ROOT_DIR / "assets" / "Singles"
 BLACK: pygame.Color = pygame.Color(0, 0, 0)
 CREAM: pygame.Color = pygame.Color(251, 239, 218)
 CHARCOAL: pygame.Color = pygame.Color(33, 32, 28)
+SHADOW: pygame.Color = pygame.Color(30, 30, 30)
 RED: pygame.Color = pygame.Color(220, 20, 20)
 
 WINDOW_W: int = 1920
@@ -311,6 +371,7 @@ PIP_CLUSTER: int = 5
 PIP_LINE: int = 15
 PIP_OFFSET: tuple[int, int] = (48, -55)
 CLOCK_OFFSET: int = -64
+SHADOW_OFFSET: int = 3
 
 COUNTER_UI_SCALE_RATIO: float = 2.5
 
@@ -320,6 +381,7 @@ NEXT_ID: Iterator[int] = count(0)
 
 TIMER_START_SECONDS = 900.0
 
+BAG_TOOLTIP="Left Click: pick up stone\nRight Click: pick up capstone"
 
 #####################
 # ENTRY POINT HERE BAYBEEEEE
@@ -345,6 +407,7 @@ def main():
     }
     clock_font = pygame.font.SysFont("courier new", 64)
     board_choice: Dimension = 6
+    input_state: InputState= InputState(set(), None, 0, None)
     stones: int = BOARD_DIMS[board_choice].stones
     capstones: int = BOARD_DIMS[board_choice].capstones
     stone_count: StoneCount = StoneCount(
@@ -354,23 +417,15 @@ def main():
     board_state: BoardState = {}
     sprites: Sprites = {}
     sprites_by_type: SpritesByType = defaultdict(pygame.sprite.Group)
-    render_params: RenderingParams = RenderingParams(
-        window=window,
-        canvas=canvas,
-        display_target=display_target,
-        clock=clock,
-        clock_font=clock_font,
-        clock_tick=0,
-        clock_time=0,
-    )
     game_state: GameState = GameState(
         sprites=sprites,
         sprites_by_type=sprites_by_type,
         board=board_state,
         dimension=board_choice,
         stone_count=stone_count,
-        active_player=Player.WHITE,
+        active_player=Player.BLACK,
         timer=timer,
+        input_state=input_state,
     )
 
     #####################
@@ -403,6 +458,16 @@ def main():
         rect = pygame.Rect(x, y, w, h)
         textures[name] = atlas.subsurface(rect)
 
+    render_params: RenderingParams = RenderingParams(
+        window=window,
+        canvas=canvas,
+        display_target=display_target,
+        clock=clock,
+        clock_font=clock_font,
+        clock_tick=0,
+        clock_time=0,
+        textures=textures,
+    )
     # All static and non-moving elements
     spawn_board(game_state, render_params, textures)
 
@@ -411,27 +476,43 @@ def main():
 
 def spawn_stone_counters(
     state: GameState,
-    renders: RenderingParams,
+    render: RenderingParams,
     textures: dict[Texture, pygame.Surface],
 ) -> None:
     """
     :param state:
-    :param renders:
+    :param render:
     :param textures:
     """
     board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
-    board_bounds.center = renders.canvas.get_rect().center
+    board_bounds.center = render.canvas.get_rect().center
 
     counter_scale: int = round(BOARD_SIZE / COUNTER_UI_SCALE_RATIO)
 
     black_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
     white_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
 
-    black_counter_rect.bottomleft = board_bounds.move(UI_SPACER, 2*UI_SPACER).midright
-    white_counter_rect.bottomright = board_bounds.move(-UI_SPACER, 2*UI_SPACER).midleft
+    black_counter_rect.bottomleft = board_bounds.move(UI_SPACER, 2 * UI_SPACER).midright
+    white_counter_rect.bottomright = board_bounds.move(
+        -UI_SPACER, 2 * UI_SPACER
+    ).midleft
 
-    spawn(state, textures, SpriteType.UI, Texture.STONE_COUNTER, white_counter_rect)
-    spawn(state, textures, SpriteType.UI, Texture.STONE_COUNTER, black_counter_rect)
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.STONE_COUNTER,
+        white_counter_rect,
+        interactable=Interactable.STONE_COUNTER,
+    )
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.STONE_COUNTER,
+        black_counter_rect,
+        interactable=Interactable.STONE_COUNTER,
+    )
 
     pip_rect_black: pygame.Rect = pygame.Rect(0, 0, PIP_SCALE, PIP_SCALE)
     pip_rect_white: pygame.Rect = pygame.Rect(0, 0, PIP_SCALE, PIP_SCALE)
@@ -489,27 +570,27 @@ def count_and_spawn_pips(
 
 def spawn_board(
     state: GameState,
-    renders: RenderingParams,
+    render: RenderingParams,
     textures: dict[Texture, pygame.Surface],
 ) -> None:
     """
     Edit this to only spawn the UI
     :param state:
-    :param renders:
+    :param render:
     :param textures:
     :return:
     """
 
-    spawn_timers(state, renders, textures)
+    spawn_timers(state, render, textures)
 
     board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
-    board_bounds.center = renders.canvas.get_rect().center
+    board_bounds.center = render.canvas.get_rect().center
 
     bg_bounds: pygame.Rect = textures[Texture.BG].get_rect()
     spawn(state, textures, SpriteType.BOARD, Texture.BG, bg_bounds)
     spawn(state, textures, SpriteType.BOARD, Texture.BOARD, board_bounds, 1)
 
-    spawn_stone_counters(state, renders, textures)
+    spawn_stone_counters(state, render, textures)
 
     bag_scale: int = BOARD_SIZE // 4
     stone_scale: int = bag_scale // 2
@@ -522,17 +603,46 @@ def spawn_board(
 
     left_bag_rect.topright = board_bounds.move(-UI_SPACER, 0).topleft
     right_bag_rect.topleft = board_bounds.move(UI_SPACER, 0).topright
-    spawn(state, textures, SpriteType.UI, Texture.STONE_BAG, left_bag_rect)
-    spawn(state, textures, SpriteType.UI, Texture.STONE_BAG, right_bag_rect)
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.STONE_BAG,
+        left_bag_rect,
+        interactable=Interactable.STONE_BAG,
+        tooltip=BAG_TOOLTIP
+    )
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.STONE_BAG,
+        right_bag_rect,
+        interactable=Interactable.STONE_BAG,
+        tooltip=BAG_TOOLTIP
+    )
 
     black_ui_stone.center = right_bag_rect.move(0, -stone_spacer).center
     white_ui_stone.center = left_bag_rect.move(0, -stone_spacer).center
-    spawn(state, textures, SpriteType.UI, Texture.BLACK_FLAT, black_ui_stone)
-    spawn(state, textures, SpriteType.UI, Texture.WHITE_FLAT, white_ui_stone)
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.BLACK_FLAT,
+        black_ui_stone,
+        interactable=Interactable.STONE_BAG,
+    )
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.WHITE_FLAT,
+        white_ui_stone,
+        interactable=Interactable.STONE_BAG,
+    )
 
     dimension = state.dimension
 
-    # Probably a mistake, I wanna spawn the tiles as full sprites so I can snap to them
     tile_size = (BOARD_SIZE - (dimension + 2) * TILE_SPACER) // dimension
     tile_rect: pygame.Rect = pygame.Rect(0, 0, tile_size, tile_size)
     tile_rect.topleft = board_bounds.topleft
@@ -547,21 +657,22 @@ def spawn_board(
                     TILE_SPACER + (tile_size + TILE_SPACER) * col,
                     TILE_SPACER + (tile_size + TILE_SPACER) * row,
                 ),
+                interactable=Interactable.TILE,
             )
 
 
 def spawn_timers(
-    state: GameState, renders: RenderingParams, textures: dict[Texture, pygame.Surface]
+    state: GameState, render: RenderingParams, textures: dict[Texture, pygame.Surface]
 ) -> None:
     """
 
     :param state:
-    :param renders:
+    :param render:
     :param textures:
     :return:
     """
     board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
-    board_bounds.center = renders.canvas.get_rect().center
+    board_bounds.center = render.canvas.get_rect().center
 
     clock_scale: int = round(BOARD_SIZE / COUNTER_UI_SCALE_RATIO)
 
@@ -571,13 +682,31 @@ def spawn_timers(
     black_clock_rect.topleft = board_bounds.move(UI_SPACER, 0).midright
     white_clock_rect.topright = board_bounds.move(-UI_SPACER, 0).midleft
 
-    spawn(state, textures, SpriteType.UI, Texture.BLACK_CLOCK, black_clock_rect)
-    spawn(state, textures, SpriteType.UI, Texture.WHITE_CLOCK, white_clock_rect)
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.BLACK_CLOCK,
+        black_clock_rect,
+        interactable=Interactable.CLOCK,
+    )
+    spawn(
+        state,
+        textures,
+        SpriteType.UI,
+        Texture.WHITE_CLOCK,
+        white_clock_rect,
+        interactable=Interactable.CLOCK,
+    )
 
     minutes, seconds = divmod(TIMER_START_SECONDS, 60.0)
     text = f"{int(minutes):02d}:{int(seconds):02d}"
-    white_clock_text: pygame.Surface = renders.clock_font.render(text, True, CHARCOAL)
-    black_clock_text: pygame.Surface = renders.clock_font.render(text, True, CREAM)
+    white_clock_text: pygame.Surface = render_text_with_shadow(
+        render.clock_font, text, CHARCOAL, SHADOW
+    )
+    black_clock_text: pygame.Surface = render_text_with_shadow(
+        render.clock_font, text, CREAM, SHADOW
+    )
 
     black_text_rect = black_clock_text.get_rect()
     white_text_rect = white_clock_text.get_rect()
@@ -600,15 +729,15 @@ def spawn_timers(
     )
 
 
-def update_clocks(state: GameState, renders: RenderingParams) -> None:
+def update_clocks(state: GameState, render: RenderingParams) -> None:
     """
 
     :param state:
-    :param renders:
+    :param render:
     :return:
     """
     prev_time = state.timer[state.active_player]
-    next_time = state.timer[state.active_player] - (renders.clock_tick / 1000.0)
+    next_time = state.timer[state.active_player] - (render.clock_tick / 1000.0)
     state.timer[state.active_player] = next_time
 
     if int(prev_time) != int(next_time):
@@ -619,23 +748,54 @@ def update_clocks(state: GameState, renders: RenderingParams) -> None:
                 match clock.player:
                     case Player.BLACK:
                         old_center = clock.rect.center
-                        clock.sprite = renders.clock_font.render(text, True, CREAM)
+                        clock.sprite = render_text_with_shadow(
+                            render.clock_font, text, CREAM, SHADOW
+                        )
                         clock.rect.center = old_center
 
                     case Player.WHITE:
                         old_center = clock.rect.center
-                        clock.sprite = renders.clock_font.render(text, True, CHARCOAL)
+                        clock.sprite = render_text_with_shadow(
+                            render.clock_font, text, CHARCOAL, SHADOW
+                        )
                         clock.rect.center = old_center
 
 
+def render_text_with_shadow(
+    font: pygame.font.Font, text: str, fg: pygame.Color, shadow: pygame.Color
+) -> pygame.Surface:
+    """
+    Helper function for making drop shadow text
+    :param font:
+    :param text:
+    :param fg:
+    :param shadow:
+    :return:
+    """
+    shadow_surf = font.render(text, True, shadow)
+    shadow_surf = pygame.transform.gaussian_blur(shadow_surf, SHADOW_OFFSET)
+    main_surf = font.render(text, True, fg)
+
+    composite = pygame.Surface(
+        (main_surf.get_width() + SHADOW_OFFSET, main_surf.get_height() + SHADOW_OFFSET),
+        pygame.SRCALPHA,
+    )
+    composite.blit(shadow_surf, (SHADOW_OFFSET, SHADOW_OFFSET))
+    composite.blit(main_surf, (0, 0))
+    return composite
+
+
 def user_inputs(
-    renders: RenderingParams,
+    state: GameState,
+    render: RenderingParams,
 ):
     """
     take user inputs and respond
-    :param renders:
+    :param state:
+    :param render:
     :return:
     """
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -649,57 +809,76 @@ def user_inputs(
             scaled_canvas_w: int = int(WINDOW_W * scale)
             scaled_canvas_h: int = int(WINDOW_H * scale)
 
-            renders.display_target = pygame.Rect(0, 0, scaled_canvas_w, scaled_canvas_h)
-            renders.display_target.center = (window_w // 2, window_h // 2)
+            render.display_target = pygame.Rect(0, 0, scaled_canvas_w, scaled_canvas_h)
+            render.display_target.center = (window_w // 2, window_h // 2)
+
+    canvas_mouse = mouse_on_canvas(render)
+    current_hovered = set()
+    for sprite_id, info in state.sprites.items():
+        if info.interactable and info.rect.collidepoint(canvas_mouse):
+            current_hovered.add(sprite_id)
+
+    for sprite_id in current_hovered - state.input_state.hovered_sprites:
+        interactable: Interactable | None = state.sprites[sprite_id].interactable
+        callback = INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_ENTER)) if interactable else None
+        if callback:
+            callback(state, sprite_id)
+
+    for sprite_id in state.input_state.hovered_sprites - current_hovered:
+        if sprite_id in state.sprites:
+            interactable = state.sprites[sprite_id].interactable
+            callback = INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_EXIT)) if interactable else None
+            if callback:
+                callback(state, sprite_id)
+
+    state.input_state.hovered_sprites = current_hovered
 
 
 def mouse_on_canvas(
-    renders: RenderingParams,
+    render: RenderingParams,
 ) -> tuple[int, int]:
     """
     convert the window mouse to a scaled canvas mouse
-    :param renders:
+    :param render:
     :return:
     """
     raw_mouse_pos: tuple[int, int] = pygame.mouse.get_pos()
-    canvas_mouse_x: int = (raw_mouse_pos[0] - renders.display_target.x) * (
-        WINDOW_W // renders.display_target.width
+    canvas_mouse_x: int = (raw_mouse_pos[0] - render.display_target.x) * (
+        WINDOW_W // render.display_target.width
     )
-    canvas_mouse_y: int = (raw_mouse_pos[1] - renders.display_target.y) * (
-        WINDOW_H // renders.display_target.height
+    canvas_mouse_y: int = (raw_mouse_pos[1] - render.display_target.y) * (
+        WINDOW_H // render.display_target.height
     )
     return canvas_mouse_x, canvas_mouse_y
 
 
 def game_loop(
     state: GameState,
-    renders: RenderingParams,
+    render: RenderingParams,
 ) -> None:
     """
     main game loop silly
     :param state:
-    :param renders:
+    :param render:
     :return:
     """
     while True:
 
-        update_clocks(state, renders)
+        update_clocks(state, render)
         # This can resize the window and close the game, so it comes first
-        user_inputs(renders)
+        user_inputs(state, render)
 
-        # canvas_mouse = mouse_on_canvas(renders)
-
-        render_sprites(state, renders)
+        render_sprites(state, render)
 
 
-def render_sprites(state: GameState, renders: RenderingParams) -> None:
+def render_sprites(state: GameState, render: RenderingParams) -> None:
     """
     Run through the sprites in the game and blit them
     :param state:
-    :param renders:
+    :param render:
     :return:
     """
-    renders.window.fill(BLACK)
+    render.window.fill(BLACK)
 
     non_stones = (s for s in state.sprites.values() if s.type != SpriteType.STONE)
 
@@ -708,7 +887,7 @@ def render_sprites(state: GameState, renders: RenderingParams) -> None:
     ):
         rect: pygame.Rect = sprite_info.rect
         sprite: pygame.Surface = sprite_info.sprite
-        renders.canvas.blit(sprite, rect)
+        render.canvas.blit(sprite, rect)
 
     for sprite_list in state.board.values():
         if not sprite_list:
@@ -717,19 +896,118 @@ def render_sprites(state: GameState, renders: RenderingParams) -> None:
         second = sprite_list[-2] if len(sprite_list) >= 2 else None
 
         if second and top.texture in SEE_THROUGH_TEXTURES:
-            renders.canvas.blit(second.sprite, second.rect)
-        renders.canvas.blit(top.sprite, top.rect)
+            render.canvas.blit(second.sprite, second.rect)
+        render.canvas.blit(top.sprite, top.rect)
 
     scaled_canvas: pygame.Surface = pygame.transform.scale(
-        renders.canvas,
-        (renders.display_target.width, renders.display_target.height),
+        render.canvas,
+        (render.display_target.width, render.display_target.height),
     )
 
-    renders.window.blit(scaled_canvas, renders.display_target)
+    render.window.blit(scaled_canvas, render.display_target)
     pygame.display.flip()
-    renders.clock_tick = renders.clock.tick(60)
-    renders.clock_time += renders.clock_tick
+    render.clock_tick = render.clock.tick(60)
+    render.clock_time += render.clock_tick
 
 
+def spawn_stone_at_mouse(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
+    :return:
+    """
+    print(state, sprite_id)
+
+def spawn_capstone_at_mouse(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
+    :return:
+    """
+    print(state, sprite_id)
+
+
+def show_counter_tooltip(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to show the pip counter tooltip
+    :return:
+    """
+    print(state, sprite_id)
+
+
+def show_tooltip(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to show the sprite's tooltip
+    :return:
+    """
+    print(state, sprite_id)
+
+
+def hide_tooltip(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to hide the sprite's tooltip
+    :return:
+    """
+    print(state, sprite_id)
+
+def show_tile_stack(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to show the tile's side view
+    :return:
+    """
+    print(state, sprite_id)
+
+
+def hide_tile_stack(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to hide the tile's sideview
+    :return:
+    """
+    print(state, sprite_id)
+def drop_tiles_along_drag(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to drop one tile at a time in a straight line
+    :return:
+    """
+    print(state, sprite_id)
+def drop_all_tiles(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to drop everything in your hand
+    :return:
+    """
+    print(state, sprite_id)
+def flatten_tiles_along_drag(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to super drag - intentionally flatten with your capstones if possible
+    :return:
+    """
+    print(state, sprite_id)
+
+def drop_and_flatten_all_tiles(state: GameState, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to super drop - intentionally flatten with your capstones if possible
+    :return:
+    """
+    print(state, sprite_id)
+
+INTERACTION_CALLBACKS: dict[
+    tuple[Interactable, InteractionType], InteractionCallback
+] = {
+    (Interactable.STONE_BAG, InteractionType.LEFT_CLICK): spawn_stone_at_mouse,
+    (Interactable.STONE_BAG, InteractionType.RIGHT_CLICK): spawn_capstone_at_mouse,
+    (Interactable.STONE_BAG, InteractionType.HOVER_ENTER): show_tooltip,
+    (Interactable.STONE_BAG, InteractionType.HOVER_EXIT): hide_tooltip,
+
+    (Interactable.STONE_COUNTER, InteractionType.HOVER_ENTER): show_tooltip,
+    (Interactable.STONE_COUNTER, InteractionType.HOVER_EXIT): hide_tooltip,
+
+    (Interactable.CLOCK, InteractionType.HOVER_ENTER): show_tooltip,
+    (Interactable.CLOCK, InteractionType.HOVER_EXIT): hide_tooltip,
+
+    (Interactable.TILE, InteractionType.HOVER_ENTER): show_tile_stack,
+    (Interactable.TILE, InteractionType.HOVER_EXIT): hide_tile_stack,
+    (Interactable.TILE, InteractionType.LEFT_DRAG_START): drop_tiles_along_drag,
+    (Interactable.TILE, InteractionType.LEFT_DRAG_STOP): drop_all_tiles,
+    (Interactable.TILE, InteractionType.RIGHT_DRAG_START): flatten_tiles_along_drag,
+    (Interactable.TILE, InteractionType.RIGHT_DRAG_STOP): drop_and_flatten_all_tiles,
+}
 if __name__ == "__main__":
     main()
