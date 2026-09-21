@@ -427,8 +427,8 @@ def spawn_stone_counters(
     black_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
     white_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
 
-    black_counter_rect.bottomleft = board_bounds.move(UI_SPACER, 0).midright
-    white_counter_rect.bottomright = board_bounds.move(-UI_SPACER, 0).midleft
+    black_counter_rect.bottomleft = board_bounds.move(UI_SPACER, 2*UI_SPACER).midright
+    white_counter_rect.bottomright = board_bounds.move(-UI_SPACER, 2*UI_SPACER).midleft
 
     spawn(state, textures, SpriteType.UI, Texture.STONE_COUNTER, white_counter_rect)
     spawn(state, textures, SpriteType.UI, Texture.STONE_COUNTER, black_counter_rect)
