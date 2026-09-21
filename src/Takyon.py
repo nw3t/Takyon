@@ -1,16 +1,20 @@
 #!/usr/bin/env python
-"""Takyon by Woland
+"""**Takyon by Woland**
 
-Art creds
-Arabesque Design on Dark Ground
+Rules of Tak go here eventually <
+
+**Art creds:**
+
+**Arabesque Design on Dark Ground**
 Virgil Solis German
-1534–1562
+*1534–1562*
 
-Dark Grey Leather Handbag By Saber Handbags - This file was contributed to
-Wikimedia Commons by Missouri Historical Society as part of a cooperation project.
-The donation was facilitated by the Digital Public Library of America.
-Record in source catalogDPLA identifier: f676934219011ac2ae4eb524dad7cd15
-Missouri Historical Society identifier: 2000-018-0089, No restrictions
+**Dark Grey Leather Handbag By Saber Handbags**
+This file was contributed to Wikimedia Commons by Missouri Historical
+Society as part of a cooperation project. The donation was facilitated by the
+Digital Public Library of America. Record in source
+*catalogDPLA identifier: f676934219011ac2ae4eb524dad7cd15
+Missouri Historical Society identifier: 2000-018-0089, No restrictions*
 """
 
 from __future__ import annotations  # the ability to order freely
