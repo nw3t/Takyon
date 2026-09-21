@@ -212,7 +212,7 @@ def spawn_from_surface(
 
 def spawn(
     state: GameState,
-    textures: dict[Texture, pygame.Surface],
+    render: RenderingParams,
     sprite_type: SpriteType,
     texture: Texture,
     rect: pygame.Rect,
@@ -224,7 +224,7 @@ def spawn(
     """
     Use this to make new sprites, no other constructor
     :param state:
-    :param textures:
+    :param render:
     :param sprite_type:
     :param texture:
     :param rect:
@@ -235,7 +235,7 @@ def spawn(
     :return:
     """
     sprite_id: SpriteID = SpriteID(next(NEXT_ID))
-    scaled_sprite = pygame.transform.scale(textures[texture], rect.size)
+    scaled_sprite = pygame.transform.scale(render.textures[texture], rect.size)
     info: SpriteInfo = SpriteInfo(
         sprite_type, scaled_sprite, rect, texture, z_order, player, interactable, tooltip
     )
@@ -473,7 +473,7 @@ def main():
         textures=textures,
     )
     # All static and non-moving elements
-    spawn_board(game_state, render_params, textures)
+    spawn_board(game_state, render_params)
 
     game_loop(game_state, render_params)
 
@@ -481,14 +481,14 @@ def main():
 def spawn_stone_counters(
     state: GameState,
     render: RenderingParams,
-    textures: dict[Texture, pygame.Surface],
+
 ) -> None:
     """
     :param state:
     :param render:
     :param textures:
     """
-    board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
+    board_bounds: pygame.Rect = render.textures[Texture.BOARD].get_rect()
     board_bounds.center = render.canvas.get_rect().center
 
     counter_scale: int = round(BOARD_SIZE / COUNTER_UI_SCALE_RATIO)
@@ -503,7 +503,7 @@ def spawn_stone_counters(
 
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.STONE_COUNTER,
         white_counter_rect,
@@ -511,7 +511,7 @@ def spawn_stone_counters(
     )
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.STONE_COUNTER,
         black_counter_rect,
@@ -523,12 +523,12 @@ def spawn_stone_counters(
     pip_rect_black.bottomleft = black_counter_rect.move(PIP_OFFSET).bottomleft
     pip_rect_white.bottomleft = white_counter_rect.move(PIP_OFFSET).bottomleft
 
-    count_and_spawn_pips(state, textures, pip_rect_black, pip_rect_white)
+    count_and_spawn_pips(state, render, pip_rect_black, pip_rect_white)
 
 
 def count_and_spawn_pips(
     state: GameState,
-    textures: dict[Texture, pygame.Surface],
+    render: RenderingParams,
     pip_rect_black: pygame.Rect,
     pip_rect_white: pygame.Rect,
 ) -> None:
@@ -569,32 +569,31 @@ def count_and_spawn_pips(
             pip_texture: Texture = texture if pips < stones else Texture.GOLD_PIP
 
             pip_translation: pygame.Rect = pip_rect.move(x_movement, -y_movement)
-            spawn(state, textures, SpriteType.PIP, pip_texture, pip_translation)
+            spawn(state, render, SpriteType.PIP, pip_texture, pip_translation)
 
 
 def spawn_board(
     state: GameState,
     render: RenderingParams,
-    textures: dict[Texture, pygame.Surface],
+
 ) -> None:
     """
     Edit this to only spawn the UI
     :param state:
     :param render:
-    :param textures:
     :return:
     """
 
-    spawn_timers(state, render, textures)
+    spawn_timers(state, render)
 
-    board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
+    board_bounds: pygame.Rect = render.textures[Texture.BOARD].get_rect()
     board_bounds.center = render.canvas.get_rect().center
 
-    bg_bounds: pygame.Rect = textures[Texture.BG].get_rect()
-    spawn(state, textures, SpriteType.BOARD, Texture.BG, bg_bounds)
-    spawn(state, textures, SpriteType.BOARD, Texture.BOARD, board_bounds, 1)
+    bg_bounds: pygame.Rect = render.textures[Texture.BG].get_rect()
+    spawn(state, render, SpriteType.BOARD, Texture.BG, bg_bounds)
+    spawn(state, render, SpriteType.BOARD, Texture.BOARD, board_bounds, 1)
 
-    spawn_stone_counters(state, render, textures)
+    spawn_stone_counters(state, render)
 
     bag_scale: int = BOARD_SIZE // 4
     stone_scale: int = bag_scale // 2
@@ -609,7 +608,7 @@ def spawn_board(
     right_bag_rect.topleft = board_bounds.move(UI_SPACER, 0).topright
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.STONE_BAG,
         left_bag_rect,
@@ -618,7 +617,7 @@ def spawn_board(
     )
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.STONE_BAG,
         right_bag_rect,
@@ -630,7 +629,7 @@ def spawn_board(
     white_ui_stone.center = left_bag_rect.move(0, -stone_spacer).center
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.BLACK_FLAT,
         black_ui_stone,
@@ -638,7 +637,7 @@ def spawn_board(
     )
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.WHITE_FLAT,
         white_ui_stone,
@@ -654,7 +653,7 @@ def spawn_board(
         for row in range(dimension):
             spawn(
                 state,
-                textures,
+                render,
                 SpriteType.TILE,
                 Texture.TILE,
                 tile_rect.move(
@@ -666,7 +665,7 @@ def spawn_board(
 
 
 def spawn_timers(
-    state: GameState, render: RenderingParams, textures: dict[Texture, pygame.Surface]
+    state: GameState, render: RenderingParams
 ) -> None:
     """
 
@@ -675,7 +674,7 @@ def spawn_timers(
     :param textures:
     :return:
     """
-    board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
+    board_bounds: pygame.Rect = render.textures[Texture.BOARD].get_rect()
     board_bounds.center = render.canvas.get_rect().center
 
     clock_scale: int = round(BOARD_SIZE / COUNTER_UI_SCALE_RATIO)
@@ -688,7 +687,7 @@ def spawn_timers(
 
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.BLACK_CLOCK,
         black_clock_rect,
@@ -696,7 +695,7 @@ def spawn_timers(
     )
     spawn(
         state,
-        textures,
+        render,
         SpriteType.UI,
         Texture.WHITE_CLOCK,
         white_clock_rect,
