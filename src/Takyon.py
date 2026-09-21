@@ -34,6 +34,7 @@ SpriteID = NewType("SpriteID", int)
 class SpriteType(Enum):
     """
     UI is a UI element, never changing but often clickable
+    CLOCK is a UI element, but it needs to be updated frequently and conditionally
     PIP is a counter for how many stones the player has each turn
     TILE is a tile sprite used for snapping stones
     BOARD is the game board, UI features are measured against its rect
@@ -41,6 +42,7 @@ class SpriteType(Enum):
     """
 
     UI = auto()
+    CLOCK = auto()
     PIP = auto()
     TILE = auto()
     BOARD = auto()
@@ -50,6 +52,7 @@ class SpriteType(Enum):
 TYPE_Z_LAYERS = {
     SpriteType.BOARD: 0,
     SpriteType.UI: 1,
+    SpriteType.CLOCK: 1,
     SpriteType.PIP: 2,
     SpriteType.TILE: 2,
     SpriteType.STONE: 3,
@@ -58,12 +61,11 @@ TYPE_Z_LAYERS = {
 
 class Player(Enum):
     """
-    Used for telling whose turn it is, or none if not playing a match
+    Used for telling whose turn it is
     """
 
     WHITE = auto()
     BLACK = auto()
-    NONE = auto()
 
 
 class StoneType(Enum):
@@ -103,16 +105,18 @@ class SpriteInfo(pygame.sprite.Sprite):
     type: SpriteType
     sprite: pygame.Surface
     rect: pygame.Rect
-    texture: Texture
+    texture: Texture | None
     z_order: int
+    player: Player | None
 
     def __init__(
         self,
         sprite_type: SpriteType,
         sprite: pygame.Surface,
         rect: pygame.Rect,
-        texture: Texture,
+        texture: Texture | None,
         z_order: int,
+        player: Player | None,
         *groups: pygame.sprite.AbstractGroup,
     ):
         assert not groups, (
@@ -123,8 +127,41 @@ class SpriteInfo(pygame.sprite.Sprite):
         self.type: SpriteType = sprite_type
         self.sprite: pygame.Surface = sprite
         self.rect: pygame.Rect = rect
-        self.texture: Texture = texture
+        self.texture: Texture | None = texture
+        self.player: Player | None = player
         self.z_order: int = z_order
+
+
+def spawn_from_surface(
+    state: GameState,
+    sprite_type: SpriteType,
+    surface: pygame.Surface,
+    rect: pygame.Rect,
+    z_order: int = 0,
+    player: Player | None = None,
+) -> SpriteID:
+    """
+    If the sprite has its own generated surface instead of a texture map
+    :param state:
+    :param sprite_type:
+    :param surface:
+    :param rect:
+    :param z_order:
+    :param player:
+    :return:
+    """
+    sprite_id = SpriteID(next(NEXT_ID))
+    info = SpriteInfo(
+        sprite_type,
+        surface,
+        rect,
+        texture=None,
+        z_order=z_order,
+        player=player,
+    )
+    state.sprites[sprite_id] = info
+    state.sprites_by_type[sprite_type].add(info)
+    return sprite_id
 
 
 def spawn(
@@ -134,6 +171,7 @@ def spawn(
     texture: Texture,
     rect: pygame.Rect,
     z_order: int = 0,
+    player: Player | None = None,
 ) -> SpriteID:
     """
     Use this to make new sprites, no other constructor
@@ -142,12 +180,15 @@ def spawn(
     :param sprite_type:
     :param texture:
     :param rect:
-    :param z_order:
+    :param z_order:one = None,
+    :param player:
     :return:
     """
     sprite_id: SpriteID = SpriteID(next(NEXT_ID))
     scaled_sprite = pygame.transform.scale(textures[texture], rect.size)
-    info: SpriteInfo = SpriteInfo(sprite_type, scaled_sprite, rect, texture, z_order)
+    info: SpriteInfo = SpriteInfo(
+        sprite_type, scaled_sprite, rect, texture, z_order, player
+    )
     state.sprites[sprite_id] = info
     state.sprites_by_type[sprite_type].add(info)
     return sprite_id
@@ -184,19 +225,6 @@ class GameState:
 
 
 @dataclass
-class Render:
-    """
-    Format to queue up
-    """
-
-    surface: pygame.Surface
-    rect: pygame.Rect
-
-
-RenderQueue = list[Render]
-
-
-@dataclass
 class RenderingParams:
     """
     Pass to helper functions to keep track of PyGame's window
@@ -204,8 +232,11 @@ class RenderingParams:
 
     canvas: pygame.Surface
     clock: pygame.time.Clock
+    clock_tick: int
     display_target: pygame.Rect
     window: pygame.Surface
+    clock_font: pygame.font.Font
+    clock_time: int
 
 
 class Texture(Enum):
@@ -226,6 +257,7 @@ class Texture(Enum):
     BLACK_SIDE_FLAT = "BlackSideFlat"
     BLACK_SIDE_STANDING = "BlackSideStanding"
     BLACK_STANDING = "BlackStanding"
+    BLACK_CLOCK = "BlackClock"
     WHITE_CAP = "WhiteCap"
     WHITE_FLAT = "WhiteFlat"
     WHITE_PIP = "WhitePip"
@@ -233,6 +265,7 @@ class Texture(Enum):
     WHITE_SIDE_FLAT = "WhiteSideFlat"
     WHITE_SIDE_STANDING = "WhiteSideStanding"
     WHITE_STANDING = "WhiteStanding"
+    WHITE_CLOCK = "WhiteClock"
 
 
 SEE_THROUGH_TEXTURES: tuple[Texture, Texture] = (
@@ -258,12 +291,16 @@ ROOT_DIR = Path(__file__).resolve().parents[IS_COMPILED]
 ATLAS_DIR = ROOT_DIR / "assets" / "SpriteAtlas"
 SINGLES_DIR = ROOT_DIR / "assets" / "Singles"
 
-BLACK = (0, 0, 0)
+BLACK: pygame.Color = pygame.Color(0, 0, 0)
+CREAM: pygame.Color = pygame.Color(251, 239, 218)
+CHARCOAL: pygame.Color = pygame.Color(33, 32, 28)
+RED: pygame.Color = pygame.Color(220, 20, 20)
 
 WINDOW_W: int = 1920
 WINDOW_H: int = 1080
 
 BOARD_SIZE: int = 980
+
 TILE_SPACER: int = 20
 UI_SPACER: int = 40
 
@@ -272,6 +309,8 @@ PIP_SPACER: int = 18
 PIP_GAP: int = 8
 PIP_CLUSTER: int = 5
 PIP_LINE: int = 15
+PIP_OFFSET: tuple[int, int] = (48, -55)
+CLOCK_OFFSET: int = -64
 
 COUNTER_UI_SCALE_RATIO: float = 2.5
 
@@ -304,7 +343,7 @@ def main():
         Player.BLACK: TIMER_START_SECONDS,
         Player.WHITE: TIMER_START_SECONDS,
     }
-    clock_font = pygame.font.SysFont("courier new", 48)
+    clock_font = pygame.font.SysFont("courier new", 64)
     board_choice: Dimension = 6
     stones: int = BOARD_DIMS[board_choice].stones
     capstones: int = BOARD_DIMS[board_choice].capstones
@@ -320,6 +359,9 @@ def main():
         canvas=canvas,
         display_target=display_target,
         clock=clock,
+        clock_font=clock_font,
+        clock_tick=0,
+        clock_time=0,
     )
     game_state: GameState = GameState(
         sprites=sprites,
@@ -337,6 +379,12 @@ def main():
         Texture("Bg"): pygame.image.load(SINGLES_DIR / "Bg.png").convert_alpha(),
         Texture("Board"): pygame.image.load(SINGLES_DIR / "Board.png").convert_alpha(),
         Texture("Tile"): pygame.image.load(SINGLES_DIR / "Tile.png").convert_alpha(),
+        Texture("BlackClock"): pygame.image.load(
+            SINGLES_DIR / "BlackClock.png"
+        ).convert_alpha(),
+        Texture("WhiteClock"): pygame.image.load(
+            SINGLES_DIR / "WhiteClock.png"
+        ).convert_alpha(),
     }
 
     #####################
@@ -358,10 +406,7 @@ def main():
     # All static and non-moving elements
     spawn_board(game_state, render_params, textures)
 
-    # This is just a pass right now, it should spawn game objects and their
-    # sprites, tracking them in state
-    set_up_game(game_state, textures)
-    game_loop(game_state, render_params, textures)
+    game_loop(game_state, render_params)
 
 
 def spawn_stone_counters(
@@ -378,7 +423,6 @@ def spawn_stone_counters(
     board_bounds.center = renders.canvas.get_rect().center
 
     counter_scale: int = round(BOARD_SIZE / COUNTER_UI_SCALE_RATIO)
-    pip_offset: tuple[int, int] = (48, -55)
 
     black_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
     white_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
@@ -391,8 +435,8 @@ def spawn_stone_counters(
 
     pip_rect_black: pygame.Rect = pygame.Rect(0, 0, PIP_SCALE, PIP_SCALE)
     pip_rect_white: pygame.Rect = pygame.Rect(0, 0, PIP_SCALE, PIP_SCALE)
-    pip_rect_black.bottomleft = black_counter_rect.move(pip_offset).bottomleft
-    pip_rect_white.bottomleft = white_counter_rect.move(pip_offset).bottomleft
+    pip_rect_black.bottomleft = black_counter_rect.move(PIP_OFFSET).bottomleft
+    pip_rect_white.bottomleft = white_counter_rect.move(PIP_OFFSET).bottomleft
 
     count_and_spawn_pips(state, textures, pip_rect_black, pip_rect_white)
 
@@ -455,6 +499,9 @@ def spawn_board(
     :param textures:
     :return:
     """
+
+    spawn_timers(state, renders, textures)
+
     board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
     board_bounds.center = renders.canvas.get_rect().center
 
@@ -503,17 +550,82 @@ def spawn_board(
             )
 
 
-def set_up_game(
-    state: GameState,
-    textures: dict[Texture, pygame.Surface],
+def spawn_timers(
+    state: GameState, renders: RenderingParams, textures: dict[Texture, pygame.Surface]
 ) -> None:
     """
-    Spawn initial game objects
+
     :param state:
+    :param renders:
     :param textures:
     :return:
     """
-    pass
+    board_bounds: pygame.Rect = textures[Texture.BOARD].get_rect()
+    board_bounds.center = renders.canvas.get_rect().center
+
+    clock_scale: int = round(BOARD_SIZE / COUNTER_UI_SCALE_RATIO)
+
+    black_clock_rect: pygame.Rect = pygame.Rect(0, 0, clock_scale, clock_scale)
+    white_clock_rect: pygame.Rect = pygame.Rect(0, 0, clock_scale, clock_scale)
+
+    black_clock_rect.topleft = board_bounds.move(UI_SPACER, 0).midright
+    white_clock_rect.topright = board_bounds.move(-UI_SPACER, 0).midleft
+
+    spawn(state, textures, SpriteType.UI, Texture.BLACK_CLOCK, black_clock_rect)
+    spawn(state, textures, SpriteType.UI, Texture.WHITE_CLOCK, white_clock_rect)
+
+    minutes, seconds = divmod(TIMER_START_SECONDS, 60.0)
+    text = f"{int(minutes):02d}:{int(seconds):02d}"
+    white_clock_text: pygame.Surface = renders.clock_font.render(text, True, CHARCOAL)
+    black_clock_text: pygame.Surface = renders.clock_font.render(text, True, CREAM)
+
+    black_text_rect = black_clock_text.get_rect()
+    white_text_rect = white_clock_text.get_rect()
+    black_text_rect.midbottom = black_clock_rect.move(0, CLOCK_OFFSET).midbottom
+    white_text_rect.midbottom = white_clock_rect.move(0, CLOCK_OFFSET).midbottom
+
+    spawn_from_surface(
+        state,
+        SpriteType.CLOCK,
+        black_clock_text,
+        black_text_rect,
+        player=Player.BLACK,
+    )
+    spawn_from_surface(
+        state,
+        SpriteType.CLOCK,
+        white_clock_text,
+        white_text_rect,
+        player=Player.WHITE,
+    )
+
+
+def update_clocks(state: GameState, renders: RenderingParams) -> None:
+    """
+
+    :param state:
+    :param renders:
+    :return:
+    """
+    prev_time = state.timer[state.active_player]
+    next_time = state.timer[state.active_player] - (renders.clock_tick / 1000.0)
+    state.timer[state.active_player] = next_time
+
+    if int(prev_time) != int(next_time):
+        for clock in state.sprites_by_type[SpriteType.CLOCK]:
+            if clock.player == state.active_player:
+                minutes, seconds = divmod(state.timer[state.active_player], 60.0)
+                text = f"{int(minutes):02d}:{int(seconds):02d}"
+                match clock.player:
+                    case Player.BLACK:
+                        old_center = clock.rect.center
+                        clock.sprite = renders.clock_font.render(text, True, CREAM)
+                        clock.rect.center = old_center
+
+                    case Player.WHITE:
+                        old_center = clock.rect.center
+                        clock.sprite = renders.clock_font.render(text, True, CHARCOAL)
+                        clock.rect.center = old_center
 
 
 def user_inputs(
@@ -562,17 +674,16 @@ def mouse_on_canvas(
 def game_loop(
     state: GameState,
     renders: RenderingParams,
-    textures: dict[Texture, pygame.Surface],
 ) -> None:
     """
     main game loop silly
     :param state:
     :param renders:
-    :param textures:
     :return:
     """
     while True:
 
+        update_clocks(state, renders)
         # This can resize the window and close the game, so it comes first
         user_inputs(renders)
 
@@ -616,7 +727,8 @@ def render_sprites(state: GameState, renders: RenderingParams) -> None:
 
     renders.window.blit(scaled_canvas, renders.display_target)
     pygame.display.flip()
-    renders.clock.tick(60)
+    renders.clock_tick = renders.clock.tick(60)
+    renders.clock_time += renders.clock_tick
 
 
 if __name__ == "__main__":
