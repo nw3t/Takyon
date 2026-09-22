@@ -329,12 +329,14 @@ SEE_THROUGH_TEXTURES: tuple[Texture, Texture] = (
     Texture.BLACK_STANDING,
 )
 
+
 @dataclass
 class AppContext:
     """Source of truth for the state of the app"""
 
     game: GameState
     render: RenderingParams
+
 
 @dataclass
 class InputState:
@@ -408,6 +410,7 @@ TOOLTIP_OFFSET_X = 14
 TOOLTIP_OFFSET_Y = 13
 TOOLTIP_CLAMP_MARGIN = 6
 
+
 @dataclass
 class UIInfo:
     """
@@ -420,8 +423,6 @@ class UIInfo:
 
 
 BAG_TOOLTIP = "Left Click: pick up stone\nRight Click: pick up capstone"
-
-
 
 
 #####################
@@ -759,7 +760,9 @@ def update_tooltips(context: AppContext) -> None:
     """
     if context.game.input_state.pending_tooltip_sprite is not None:
         if context.game.input_state.active_tooltip is None:
-            time_diff = pygame.time.get_ticks() - context.game.input_state.hover_start_time
+            time_diff = (
+                pygame.time.get_ticks() - context.game.input_state.hover_start_time
+            )
             if time_diff > TOOLTIP_DELAY:
                 show_tooltip(context, context.game.input_state.pending_tooltip_sprite)
 
@@ -771,13 +774,17 @@ def update_clocks(context: AppContext) -> None:
     :return:
     """
     prev_time = context.game.timer[context.game.active_player]
-    next_time = context.game.timer[context.game.active_player] - (context.render.clock_tick / 1000.0)
+    next_time = context.game.timer[context.game.active_player] - (
+        context.render.clock_tick / 1000.0
+    )
     context.game.timer[context.game.active_player] = next_time
 
     if int(prev_time) != int(next_time):
         for clock in context.game.sprites_by_type[SpriteType.CLOCK]:
             if clock.player == context.game.active_player:
-                minutes, seconds = divmod(context.game.timer[context.game.active_player], 60.0)
+                minutes, seconds = divmod(
+                    context.game.timer[context.game.active_player], 60.0
+                )
                 text = f"{int(minutes):02d}:{int(seconds):02d}"
                 match clock.player:
                     case Player.BLACK:
@@ -819,15 +826,11 @@ def render_text_with_shadow(
     return composite
 
 
-def user_inputs(
-    context: AppContext
-):
+def handle_pygame_events(context: AppContext) -> None:
     """
-    take user inputs and respond
     :param context:
     :return:
     """
-
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -840,32 +843,72 @@ def user_inputs(
             scaled_canvas_w: int = int(WINDOW_W * scale)
             scaled_canvas_h: int = int(WINDOW_H * scale)
 
-            context.render.display_target = pygame.Rect(0, 0, scaled_canvas_w, scaled_canvas_h)
+            context.render.display_target = pygame.Rect(
+                0, 0, scaled_canvas_w, scaled_canvas_h
+            )
             context.render.display_target.center = (window_w // 2, window_h // 2)
 
-    current_hovered = get_hovered_sprites(context)
-    for sprite_id in current_hovered - context.game.input_state.hovered_sprites:
-        interactable: Interactable | None = context.game.sprites[sprite_id].interactable
-        callback = (
-            INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_ENTER))
-            if interactable
-            else None
-        )
-        if callback:
-            callback(context, sprite_id)
 
-    for sprite_id in context.game.input_state.hovered_sprites - current_hovered:
-        if sprite_id in context.game.sprites:
-            interactable = context.game.sprites[sprite_id].interactable
-            callback = (
-                INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_EXIT))
-                if interactable
-                else None
-            )
+def update_hovered_sprites(context: AppContext) -> tuple[set[SpriteID],set[SpriteID]]:
+    """
+    fetch the lists of all hovered and unhovered sprites
+    :param context:
+    :return:
+    """
+    current_hovered = get_hovered_sprites(context)
+    previous_hovered = context.game.input_state.hovered_sprites
+
+    entered_sprites = current_hovered - previous_hovered
+    exited_sprites = previous_hovered - current_hovered
+
+    context.game.input_state.hovered_sprites = current_hovered
+
+    return entered_sprites, exited_sprites
+
+def hover_enter_callbacks(
+        context: AppContext,
+        entered_sprites: set[SpriteID],
+) -> None:
+    """
+
+    :param context:
+    :param entered_sprites:
+    :return:
+    """
+    for sprite_id in entered_sprites:
+        interactable = context.game.sprites[sprite_id].interactable
+        if interactable:
+            callback = INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_ENTER))
             if callback:
                 callback(context, sprite_id)
 
-    context.game.input_state.hovered_sprites = current_hovered
+def hover_exit_callbacks(
+        context: AppContext,
+        exited_sprites: set[SpriteID],
+) -> None:
+    """
+
+    :param context:
+    :param exited_sprites:
+    :return:
+    """
+    for sprite_id in exited_sprites:
+        interactable = context.game.sprites[sprite_id].interactable
+        if interactable:
+            callback = INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_EXIT))
+            if callback:
+                callback(context, sprite_id)
+
+def user_inputs(context: AppContext) -> None:
+    """
+    take user inputs and respond
+    :param context:
+    :return:
+    """
+    handle_pygame_events(context)
+    hover_entered, hover_exited = update_hovered_sprites(context)
+    hover_enter_callbacks(context, hover_entered)
+    hover_exit_callbacks(context, hover_exited)
 
 
 def mouse_on_canvas(
@@ -903,6 +946,7 @@ def game_loop(
 
         render_sprites(context)
 
+
 def get_hovered_sprites(context: AppContext) -> set[SpriteID]:
     """
     :param context:
@@ -914,6 +958,7 @@ def get_hovered_sprites(context: AppContext) -> set[SpriteID]:
         if info.interactable and info.rect.collidepoint(canvas_mouse):
             current_hovered.add(sprite_id)
     return current_hovered
+
 
 def create_tooltip_surface(text: str, font: pygame.font.Font) -> pygame.Surface:
     """Padded grey tooltips - this needs a refactor to remove magic numbers and clean up"""
@@ -932,9 +977,7 @@ def create_tooltip_surface(text: str, font: pygame.font.Font) -> pygame.Surface:
     return tooltip_surf
 
 
-def show_tooltip(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def show_tooltip(context: AppContext, sprite_id: SpriteID) -> None:
     """Triggered on HOVER_ENTER: builds and stores tooltip surface."""
     info = context.game.sprites.get(sprite_id)
     if not info or not getattr(info, "tooltip", None):
@@ -954,28 +997,28 @@ def show_tooltip(
 
 def draw_active_tooltip(context: AppContext) -> None:
     """
-    In the rendering step, we'll draw whichever tooltip is active
     :param context:
     :return:
     """
-    tooltip_surf = context.game.input_state.active_tooltip
-    if tooltip_surf is None:
+    tooltip = context.game.input_state.active_tooltip
+    if tooltip is None:
         return
 
     canvas_mouse = mouse_on_canvas(context.render)
     mouse_x, mouse_y = canvas_mouse
 
-    # Offset slightly so the mouse cursor doesn't obscure text
-    rect = tooltip_surf.get_rect(topleft=(mouse_x + TOOLTIP_OFFSET_X, mouse_y + TOOLTIP_OFFSET_Y))
+    rect = tooltip.get_rect(
+        topleft=(mouse_x + TOOLTIP_OFFSET_X, mouse_y + TOOLTIP_OFFSET_Y)
+    )
 
-    # Clamp bounds so tooltip stays inside the 1920x1080 canvas
+    # flipflop left and right to avoid going off the screen
     canvas_rect = context.render.canvas.get_rect()
     if rect.right > canvas_rect.right:
         rect.right = mouse_x - TOOLTIP_CLAMP_MARGIN
     if rect.bottom > canvas_rect.bottom:
         rect.bottom = mouse_y - TOOLTIP_CLAMP_MARGIN
 
-    context.render.canvas.blit(tooltip_surf, rect)
+    context.render.canvas.blit(tooltip, rect)
 
 
 def render_sprites(context: AppContext) -> None:
@@ -985,8 +1028,10 @@ def render_sprites(context: AppContext) -> None:
     :return:
     """
     context.render.window.fill(BLACK)
-
-    non_stones = (s for s in context.game.sprites.values() if s.type != SpriteType.STONE)
+    # everything that's not a stone gets blitted in order of the TYPE_Z_LAYERS dict
+    non_stones = (
+        s for s in context.game.sprites.values() if s.type != SpriteType.STONE
+    )
 
     for sprite_info in sorted(
         non_stones, key=lambda s: (TYPE_Z_LAYERS[s.type], s.z_order)
@@ -995,6 +1040,7 @@ def render_sprites(context: AppContext) -> None:
         sprite: pygame.Surface = sprite_info.sprite
         context.render.canvas.blit(sprite, rect)
 
+    # stones fetched from the board will be in lists of 1-8 members and only the top two will ever be blitted
     for sprite_list in context.game.board.values():
         if not sprite_list:
             continue
@@ -1007,9 +1053,10 @@ def render_sprites(context: AppContext) -> None:
 
     draw_active_tooltip(context)
 
+    # virtual canvas scaling, maybe i wanna move all three sections of this into their own functions?
     scaled_canvas: pygame.Surface = pygame.transform.scale(
         context.render.canvas,
-        (context.render.display_target.width,context.render.display_target.height),
+        (context.render.display_target.width, context.render.display_target.height),
     )
 
     context.render.window.blit(scaled_canvas, context.render.display_target)
@@ -1017,9 +1064,7 @@ def render_sprites(context: AppContext) -> None:
     context.render.clock_tick = context.render.clock.tick(60)
 
 
-def queue_pending_tooltip(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def queue_pending_tooltip(context: AppContext, sprite_id: SpriteID) -> None:
     """
     push a tooltip into the queue to render after a timer has elapsed
     :return:
@@ -1030,9 +1075,7 @@ def queue_pending_tooltip(
     context.game.input_state.active_tooltip = None
 
 
-def clear_pending_tooltips(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def clear_pending_tooltips(context: AppContext, sprite_id: SpriteID) -> None:
     """
     reset the queue on hover exit
     :return:
@@ -1044,18 +1087,7 @@ def clear_pending_tooltips(
         context.game.input_state.active_tooltip = None
 
 
-def spawn_stone_at_mouse(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
-    """
-    Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
-    :return:
-    """
-    print(context, sprite_id)
-
-def spawn_capstone_at_mouse(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def spawn_stone_at_mouse(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
     :return:
@@ -1063,9 +1095,15 @@ def spawn_capstone_at_mouse(
     print(context, sprite_id)
 
 
-def show_tile_stack(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def spawn_capstone_at_mouse(context: AppContext, sprite_id: SpriteID) -> None:
+    """
+    Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
+    :return:
+    """
+    print(context, sprite_id)
+
+
+def show_tile_stack(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Passed as a callback to show the tile's side view
     :return:
@@ -1073,9 +1111,7 @@ def show_tile_stack(
     print(context, sprite_id)
 
 
-def hide_tile_stack(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def hide_tile_stack(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Passed as a callback to hide the tile's sideview
     :return:
@@ -1083,9 +1119,7 @@ def hide_tile_stack(
     print(context, sprite_id)
 
 
-def drop_tiles_along_drag(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def drop_tiles_along_drag(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Passed as a callback to drop one tile at a time in a straight line
     :return:
@@ -1093,9 +1127,7 @@ def drop_tiles_along_drag(
     print(context, sprite_id)
 
 
-def drop_all_tiles(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def drop_all_tiles(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Passed as a callback to drop everything in your hand
     :return:
@@ -1103,9 +1135,7 @@ def drop_all_tiles(
     print(context, sprite_id)
 
 
-def flatten_tiles_along_drag(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def flatten_tiles_along_drag(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Passed as a callback to super drag - intentionally flatten with your capstones if possible
     :return:
@@ -1113,9 +1143,7 @@ def flatten_tiles_along_drag(
     print(context, sprite_id)
 
 
-def drop_and_flatten_all_tiles(
-    context: AppContext, sprite_id: SpriteID
-) -> None:
+def drop_and_flatten_all_tiles(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Passed as a callback to super drop - intentionally flatten with your capstones if possible
     :return:
