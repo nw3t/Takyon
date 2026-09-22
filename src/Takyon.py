@@ -249,15 +249,15 @@ def spawn(
     return sprite_id
 
 
-def despawn(state: GameState, sprite_id: SpriteID) -> None:
+def despawn(context: AppContext, sprite_id: SpriteID) -> None:
     """
     Kill a sprite
-    :param state:
+    :param context:
     :param sprite_id:
     :return:
     """
-    state.sprites[sprite_id].kill()
-    del state.sprites[sprite_id]
+    context.game.sprites[sprite_id].kill()
+    del context.game.sprites[sprite_id]
 
 
 TimeRemaining = float
