@@ -18,158 +18,15 @@ Missouri Historical Society identifier: 2000-018-0089, No restrictions*
 """
 
 from __future__ import annotations  # the ability to order freely
-
 import json
-import pygame
 import sys
+import os
 
-from dataclasses import dataclass
-from collections.abc import Iterator
-from enum import Enum, auto
-from itertools import count
-from pathlib import Path
-from typing import Literal, NewType, Callable
+sys.path.insert(0, os.path.dirname(__file__))
+from .takyon_types import *
+from .global_const import *
+
 from collections import defaultdict
-
-Dimension = Literal[3, 4, 5, 6, 8]
-SpriteID = NewType("SpriteID", int)
-
-
-class SpriteType(Enum):
-    """
-    UI is a UI element, never changing but often clickable
-    CLOCK is a UI element, but it needs to be updated frequently and conditionally
-    PIP is a counter for how many stones the player has each turn
-    TILE is a tile sprite used for snapping stones
-    BOARD is the game board, UI features are measured against its rect
-    STONE is a draggable game piece
-    """
-
-    UI = auto()
-    CLOCK = auto()
-    PIP = auto()
-    TILE = auto()
-    BOARD = auto()
-    STONE = auto()
-
-
-TYPE_Z_LAYERS = {
-    SpriteType.BOARD: 0,
-    SpriteType.UI: 1,
-    SpriteType.CLOCK: 1,
-    SpriteType.PIP: 2,
-    SpriteType.TILE: 2,
-    SpriteType.STONE: 3,
-}
-
-
-class Player(Enum):
-    """
-    Used for telling whose turn it is
-    """
-
-    WHITE = auto()
-    BLACK = auto()
-
-
-class StoneType(Enum):
-    """
-    Distinguish between the two major stone types
-    """
-
-    STONE = auto()
-    CAPSTONE = auto()
-
-
-@dataclass
-class Stones:
-    """
-    Used to track how many stones are left in the game
-    """
-
-    stones: int
-    capstones: int
-
-
-@dataclass
-class StoneCount:
-    """
-    Player's stones remaining
-    """
-
-    black: Stones
-    white: Stones
-
-
-class Interactable(Enum):
-    """
-    The types of things you can interact with
-    """
-
-    STONE_BAG = auto()
-    TILE = auto()
-    CLOCK = auto()
-    STONE_COUNTER = auto()
-    MENU_BUTTON = auto()
-    MUSIC_BUTTON = auto()
-    UNDO_BUTTON = auto()
-    PLANNING_BUTTON = auto()
-
-
-class InteractionType(Enum):
-    """
-    The types of things you can do with interactables
-    """
-
-    LEFT_CLICK = auto()
-    RIGHT_CLICK = auto()
-    LEFT_DRAG_START = auto()
-    LEFT_DRAG_STOP = auto()
-    RIGHT_DRAG_START = auto()
-    RIGHT_DRAG_STOP = auto()
-    HOVER_ENTER = auto()
-    HOVER_EXIT = auto()
-
-
-class SpriteInfo(pygame.sprite.Sprite):
-    """
-    Mutable sprite data. Each sprit contains a .type, .sprite and .rect
-    """
-
-    type: SpriteType
-    sprite: pygame.Surface
-    rect: pygame.Rect
-    texture: Texture | None
-    z_order: int
-    player: Player | None
-    interactable: Interactable | None
-    tooltip: str | None
-
-    def __init__(
-        self,
-        sprite_type: SpriteType,
-        sprite: pygame.Surface,
-        rect: pygame.Rect,
-        texture: Texture | None,
-        z_order: int,
-        player: Player | None,
-        interactable: Interactable | None,
-        tooltip: str | None,
-        *groups: pygame.sprite.AbstractGroup,
-    ):
-        assert not groups, (
-            "Add sprites via spawn() ONLY. Using this constructor directly "
-            "will cause some nasty dup issues."
-        )
-        super().__init__(*groups)
-        self.type: SpriteType = sprite_type
-        self.sprite: pygame.Surface = sprite
-        self.rect: pygame.Rect = rect
-        self.texture: Texture | None = texture
-        self.player: Player | None = player
-        self.interactable: Interactable | None = interactable
-        self.tooltip: str | None = tooltip
-        self.z_order: int = z_order
 
 
 def spawn_from_surface(
@@ -258,171 +115,6 @@ def despawn(context: AppContext, sprite_id: SpriteID) -> None:
     """
     context.game.sprites[sprite_id].kill()
     del context.game.sprites[sprite_id]
-
-
-TimeRemaining = float
-Timer = dict[Player, TimeRemaining]
-
-
-@dataclass
-class GameState:
-    """
-    Our god object for sprites and positioning
-    """
-
-    sprites: Sprites
-    sprites_by_type: SpritesByType
-    board: BoardState
-    dimension: Dimension
-    stone_count: StoneCount
-    active_player: Player
-    timer: Timer
-    input_state: InputState
-
-
-@dataclass
-class RenderingParams:
-    """
-    Pass to helper functions to keep track of PyGame's window
-    """
-
-    canvas: pygame.Surface
-    clock: pygame.time.Clock
-    clock_tick: int
-    display_target: pygame.Rect
-    window: pygame.Surface
-    textures: dict[Texture, pygame.Surface]
-    ui_info: UIInfo
-
-
-class Texture(Enum):
-    """
-    Edit this every time a new texture is added to the atlas
-    """
-
-    BG = "Bg"
-    BOARD = "Board"
-    GOLD_PIP = "GoldPip"
-    STONE_BAG = "StoneBag"
-    STONE_COUNTER = "StoneCounter"
-    TILE = "Tile"
-    BLACK_CAP = "BlackCap"
-    BLACK_FLAT = "BlackFlat"
-    BLACK_PIP = "BlackPip"
-    BLACK_SIDE_CAP = "BlackSideCap"
-    BLACK_SIDE_FLAT = "BlackSideFlat"
-    BLACK_SIDE_STANDING = "BlackSideStanding"
-    BLACK_STANDING = "BlackStanding"
-    BLACK_CLOCK = "BlackClock"
-    WHITE_CAP = "WhiteCap"
-    WHITE_FLAT = "WhiteFlat"
-    WHITE_PIP = "WhitePip"
-    WHITE_SIDE_CAP = "WhiteSideCap"
-    WHITE_SIDE_FLAT = "WhiteSideFlat"
-    WHITE_SIDE_STANDING = "WhiteSideStanding"
-    WHITE_STANDING = "WhiteStanding"
-    WHITE_CLOCK = "WhiteClock"
-
-
-SEE_THROUGH_TEXTURES: tuple[Texture, Texture] = (
-    Texture.WHITE_STANDING,
-    Texture.BLACK_STANDING,
-)
-
-
-@dataclass
-class AppContext:
-    """Source of truth for the state of the app"""
-
-    game: GameState
-    render: RenderingParams
-
-
-@dataclass
-class InputState:
-    """
-    Trackables required for input
-    """
-
-    hovered_sprites: set[SpriteID]
-    dragged_sprite: SpriteID | None
-    last_click_time: int
-    last_clicked_sprite: SpriteID | None
-    active_tooltip_sprite: SpriteID | None
-    active_tooltip: pygame.Surface | None
-    pending_tooltip_sprite: SpriteID | None
-    hover_start_time: int | None
-
-
-BoardSetup = dict[Dimension, Stones]
-Sprites = dict[SpriteID, SpriteInfo]
-SpritesByType = dict[SpriteType, pygame.sprite.Group]
-BoardState = dict[tuple[int, int], list[SpriteInfo]]
-InteractionCallback = Callable[[AppContext, SpriteID], None]
-
-BOARD_DIMS: BoardSetup = {
-    3: Stones(stones=10, capstones=0),
-    4: Stones(stones=15, capstones=0),
-    5: Stones(stones=21, capstones=1),
-    6: Stones(stones=30, capstones=1),
-    8: Stones(stones=50, capstones=2),
-}
-
-IS_COMPILED = 0 if "__compiled__" in globals() else 1
-ROOT_DIR = Path(__file__).resolve().parents[IS_COMPILED]
-ATLAS_DIR = ROOT_DIR / "assets" / "SpriteAtlas"
-SINGLES_DIR = ROOT_DIR / "assets" / "Singles"
-
-BLACK: pygame.Color = pygame.Color(0, 0, 0)
-CREAM: pygame.Color = pygame.Color(251, 239, 218)
-CHARCOAL: pygame.Color = pygame.Color(33, 32, 28)
-CHARCOAL_ALPHA: pygame.Color = pygame.Color(33, 32, 28, 230)
-SHADOW: pygame.Color = pygame.Color(30, 30, 30)
-RED: pygame.Color = pygame.Color(220, 20, 20)
-
-WINDOW_W: int = 1920
-WINDOW_H: int = 1080
-
-BOARD_SIZE: int = 980
-
-TILE_SPACER: int = 20
-UI_SPACER: int = 40
-
-PIP_SCALE: int = 20
-PIP_SPACER: int = 18
-PIP_GAP: int = 8
-PIP_CLUSTER: int = 5
-PIP_LINE: int = 15
-PIP_OFFSET: tuple[int, int] = (48, -55)
-CLOCK_OFFSET: int = -64
-SHADOW_OFFSET: int = 3
-
-COUNTER_UI_SCALE_RATIO: float = 2.5
-
-STONE_COVERAGE: float = 0.9  # As a percentage of tile size
-
-NEXT_ID: Iterator[int] = count(0)
-
-TIMER_START_SECONDS = 900.0
-TOOLTIP_DELAY = 1000.0
-TOOLTIP_PADDING = 8
-TOOLTIP_OFFSET_X = 14
-TOOLTIP_OFFSET_Y = 13
-TOOLTIP_CLAMP_MARGIN = 6
-
-
-@dataclass
-class UIInfo:
-    """
-    Used for UI rendering
-    """
-
-    ui_font: pygame.font.Font
-    tooltip_font: pygame.font.Font
-    clock_font: pygame.font.Font
-
-
-BAG_TOOLTIP = "Left Click: pick up stone\nRight Click: pick up capstone"
 
 
 #####################
@@ -849,7 +541,7 @@ def handle_pygame_events(context: AppContext) -> None:
             context.render.display_target.center = (window_w // 2, window_h // 2)
 
 
-def update_hovered_sprites(context: AppContext) -> tuple[set[SpriteID],set[SpriteID]]:
+def update_hovered_sprites(context: AppContext) -> tuple[set[SpriteID], set[SpriteID]]:
     """
     fetch the lists of all hovered and unhovered sprites
     :param context:
@@ -865,9 +557,10 @@ def update_hovered_sprites(context: AppContext) -> tuple[set[SpriteID],set[Sprit
 
     return entered_sprites, exited_sprites
 
+
 def hover_enter_callbacks(
-        context: AppContext,
-        entered_sprites: set[SpriteID],
+    context: AppContext,
+    entered_sprites: set[SpriteID],
 ) -> None:
     """
 
@@ -878,13 +571,16 @@ def hover_enter_callbacks(
     for sprite_id in entered_sprites:
         interactable = context.game.sprites[sprite_id].interactable
         if interactable:
-            callback = INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_ENTER))
+            callback = INTERACTION_CALLBACKS.get(
+                (interactable, InteractionType.HOVER_ENTER)
+            )
             if callback:
                 callback(context, sprite_id)
 
+
 def hover_exit_callbacks(
-        context: AppContext,
-        exited_sprites: set[SpriteID],
+    context: AppContext,
+    exited_sprites: set[SpriteID],
 ) -> None:
     """
 
@@ -895,9 +591,12 @@ def hover_exit_callbacks(
     for sprite_id in exited_sprites:
         interactable = context.game.sprites[sprite_id].interactable
         if interactable:
-            callback = INTERACTION_CALLBACKS.get((interactable, InteractionType.HOVER_EXIT))
+            callback = INTERACTION_CALLBACKS.get(
+                (interactable, InteractionType.HOVER_EXIT)
+            )
             if callback:
                 callback(context, sprite_id)
+
 
 def user_inputs(context: AppContext) -> None:
     """

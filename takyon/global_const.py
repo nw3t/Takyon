@@ -1,0 +1,74 @@
+"""
+all the constants all the time
+"""
+from .takyon_types import Texture, SpriteType, BoardSetup, Stones
+from collections.abc import Iterator
+from itertools import count
+from pathlib import Path
+import pygame
+
+
+IS_COMPILED = 0 if "__compiled__" in globals() else 1
+ROOT_DIR = Path(__file__).resolve().parents[IS_COMPILED]
+ATLAS_DIR = ROOT_DIR / "assets" / "SpriteAtlas"
+SINGLES_DIR = ROOT_DIR / "assets" / "Singles"
+
+TYPE_Z_LAYERS = {
+    SpriteType.BOARD: 0,
+    SpriteType.UI: 1,
+    SpriteType.CLOCK: 1,
+    SpriteType.PIP: 2,
+    SpriteType.TILE: 2,
+    SpriteType.STONE: 3,
+}
+
+SEE_THROUGH_TEXTURES: tuple[Texture, Texture] = (
+    Texture.WHITE_STANDING,
+    Texture.BLACK_STANDING,
+)
+
+BOARD_DIMS: BoardSetup = {
+    3: Stones(stones=10, capstones=0),
+    4: Stones(stones=15, capstones=0),
+    5: Stones(stones=21, capstones=1),
+    6: Stones(stones=30, capstones=1),
+    8: Stones(stones=50, capstones=2),
+}
+
+BLACK: pygame.Color = pygame.Color(0, 0, 0)
+CREAM: pygame.Color = pygame.Color(251, 239, 218)
+CHARCOAL: pygame.Color = pygame.Color(33, 32, 28)
+CHARCOAL_ALPHA: pygame.Color = pygame.Color(33, 32, 28, 230)
+SHADOW: pygame.Color = pygame.Color(30, 30, 30)
+RED: pygame.Color = pygame.Color(220, 20, 20)
+
+WINDOW_W: int = 1920
+WINDOW_H: int = 1080
+
+BOARD_SIZE: int = 980
+
+TILE_SPACER: int = 20
+UI_SPACER: int = 40
+
+PIP_SCALE: int = 20
+PIP_SPACER: int = 18
+PIP_GAP: int = 8
+PIP_CLUSTER: int = 5
+PIP_LINE: int = 15
+PIP_OFFSET: tuple[int, int] = (48, -55)
+CLOCK_OFFSET: int = -64
+SHADOW_OFFSET: int = 3
+
+COUNTER_UI_SCALE_RATIO: float = 2.5
+
+BAG_TOOLTIP = "Left Click: pick up stone\nRight Click: pick up capstone"
+TOOLTIP_DELAY = 1000.0
+TOOLTIP_PADDING = 8
+TOOLTIP_OFFSET_X = 14
+TOOLTIP_OFFSET_Y = 13
+TOOLTIP_CLAMP_MARGIN = 6
+STONE_COVERAGE: float = 0.9  # As a percentage of tile size
+
+NEXT_ID: Iterator[int] = count(0)
+
+TIMER_START_SECONDS = 900.0
