@@ -284,19 +284,16 @@ def create_tooltip_surface(text: str, font: pygame.font.Font) -> pygame.Surface:
 def show_tooltip(context: AppContext, sprite_id: SpriteID) -> None:
     """Triggered on HOVER_ENTER: builds and stores tooltip surface."""
     info = context.game.sprites.get(sprite_id)
-    if not info or info.tooltip:
+    if not info or not info.tooltip:
         return
     context.game.input_state.active_tooltip_sprite = sprite_id
     context.game.input_state.pending_tooltip_sprite = None
 
-    if isinstance(info.tooltip, pygame.Surface):
-        context.game.input_state.active_tooltip = info.tooltip
-    else:
-        context.game.input_state.active_tooltip = (
-            create_tooltip_surface(info.tooltip, context.render.ui_info.tooltip_font)
-            if info.tooltip
-            else None
-        )
+    context.game.input_state.active_tooltip = (
+        create_tooltip_surface(info.tooltip, context.render.ui_info.tooltip_font)
+        if info.tooltip
+        else None
+    )
 
 
 def update_tooltips(context: AppContext) -> None:

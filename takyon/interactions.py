@@ -75,68 +75,60 @@ def clear_pending_tooltips(context: AppContext, sprite_id: SpriteID) -> None:
         context.game.input_state.active_tooltip = None
 
 
-def spawn_stone_at_mouse(context: AppContext, sprite_id: SpriteID) -> None:
+def spawn_stone_at_mouse(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
     :return:
     """
-    print(context, sprite_id)
 
 
-def spawn_capstone_at_mouse(context: AppContext, sprite_id: SpriteID) -> None:
+def spawn_capstone_at_mouse(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
     :return:
     """
-    print(context, sprite_id)
 
 
-def show_tile_stack(context: AppContext, sprite_id: SpriteID) -> None:
+def show_tile_stack(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to show the tile's side view
     :return:
     """
-    print(context, sprite_id)
 
 
-def hide_tile_stack(context: AppContext, sprite_id: SpriteID) -> None:
+def hide_tile_stack(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to hide the tile's sideview
     :return:
     """
-    print(context, sprite_id)
 
 
-def drop_tiles_along_drag(context: AppContext, sprite_id: SpriteID) -> None:
+def drop_tiles_along_drag(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to drop one tile at a time in a straight line
     :return:
     """
-    print(context, sprite_id)
 
 
-def drop_all_tiles(context: AppContext, sprite_id: SpriteID) -> None:
+def drop_all_tiles(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to drop everything in your hand
     :return:
     """
-    print(context, sprite_id)
 
 
-def flatten_tiles_along_drag(context: AppContext, sprite_id: SpriteID) -> None:
+def flatten_tiles_along_drag(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to super drag - intentionally flatten with your capstones if possible
     :return:
     """
-    print(context, sprite_id)
 
 
-def drop_and_flatten_all_tiles(context: AppContext, sprite_id: SpriteID) -> None:
+def drop_and_flatten_all_tiles(_context: AppContext, _sprite_id: SpriteID) -> None:
     """
     Passed as a callback to super drop - intentionally flatten with your capstones if possible
     :return:
     """
-    print(context, sprite_id)
 
 
 #####################
