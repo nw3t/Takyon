@@ -2,7 +2,7 @@
 For all our mouse magic
 """
 
-from .takyon_types import (
+from .types import (
     AppContext,
     Interactable,
     InteractionCallback,

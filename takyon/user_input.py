@@ -2,8 +2,8 @@
 Track what the user is doing
 """
 
-from .takyon_types import AppContext, SpriteID, RenderingParams
-from .takyon_const import WINDOW_H, WINDOW_W
+from .types import AppContext, SpriteID, RenderingParams
+from .const import WINDOW_H, WINDOW_W
 from .interactions import hover_enter_callbacks, hover_exit_callbacks
 import pygame
 
@@ -17,7 +17,6 @@ def handle_pygame_events(context: AppContext) -> bool:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-            return running
         if event.type == pygame.WINDOWRESIZED:
             window_w: int = event.x
             window_h: int = event.y

@@ -2,7 +2,7 @@
 all the constants all the time
 """
 
-from .takyon_types import Texture, SpriteType, BoardSetup, Stones
+from .types import Texture, SpriteType, BoardSetup, Stones
 from collections.abc import Iterator
 from itertools import count
 from pathlib import Path

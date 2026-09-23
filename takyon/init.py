@@ -2,7 +2,7 @@
 Set up all runtime vars
 """
 
-from .takyon_types import (
+from .types import (
     AppContext,
     Timer,
     Player,
@@ -17,7 +17,7 @@ from .takyon_types import (
     UIInfo,
     RenderingParams,
 )
-from .takyon_const import (
+from .const import (
     ATLAS_DIR,
     BOARD_DIMS,
     CLOCK_FONT,

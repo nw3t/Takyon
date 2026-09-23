@@ -2,7 +2,7 @@
 Making and destroying sprites
 """
 
-from .takyon_types import (
+from .types import (
     AppContext,
     Interactable,
     Player,
@@ -10,7 +10,7 @@ from .takyon_types import (
     SpriteInfo,
     SpriteType,
 )
-from .takyon_const import NEXT_ID, Texture
+from .const import NEXT_ID, Texture
 import pygame
 
 

@@ -2,8 +2,8 @@
 Draw to the screen
 """
 
-from .takyon_const import SHADOW_OFFSET, BLACK, TYPE_Z_LAYERS, SEE_THROUGH_TEXTURES, TOOLTIP_OFFSET_X, TOOLTIP_OFFSET_Y, TOOLTIP_CLAMP_MARGIN
-from .takyon_types import AppContext, SpriteType
+from .const import SHADOW_OFFSET, BLACK, TYPE_Z_LAYERS, SEE_THROUGH_TEXTURES, TOOLTIP_OFFSET_X, TOOLTIP_OFFSET_Y, TOOLTIP_CLAMP_MARGIN
+from .types import AppContext, SpriteType
 from .user_input import mouse_on_canvas
 import pygame
 

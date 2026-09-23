@@ -17,11 +17,10 @@ Digital Public Library of America. Record in source
 Missouri Historical Society identifier: 2000-018-0089, No restrictions*
 """
 
-from .takyon_init import initialize_takyon_context
-from .takyon_render import render_sprites
-from .takyon_types import AppContext
-from .takyon_ui import spawn_board
-from .takyon_ui import update_clocks, update_tooltips
+from .init import initialize_takyon_context
+from .render import render_sprites
+from .types import AppContext
+from .ui import update_clocks, update_tooltips, spawn_board
 from .user_input import user_inputs
 import pygame
 

@@ -4,8 +4,8 @@ This will often mix game state and rendering I understand...
 I guess we deal with it. This module sets up the board and spawns game pieces
 """
 
-from .takyon_types import AppContext, Interactable, Player, SpriteID, SpriteType
-from .takyon_const import (
+from .types import AppContext, Interactable, Player, SpriteID, SpriteType
+from .const import (
     BAG_TOOLTIP,
     BOARD_SIZE,
     CHARCOAL,
@@ -27,8 +27,8 @@ from .takyon_const import (
     UI_SPACER,
     Texture,
 )
-from .takyon_render import render_text_with_shadow
-from .takyon_sprites import spawn, spawn_from_surface
+from .render import render_text_with_shadow
+from .sprites import spawn, spawn_from_surface
 import pygame
 
 
