@@ -46,9 +46,12 @@ def spawn_stone_counters(
     black_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
     white_counter_rect: pygame.Rect = pygame.Rect(0, 0, counter_scale, counter_scale)
 
-    black_counter_rect.bottomleft = board_bounds.move(UI_SPACER, 2 * UI_SPACER).midright
+    horizontal_ui_spacer = 2 * UI_SPACER
+    black_counter_rect.bottomleft = board_bounds.move(
+        UI_SPACER, horizontal_ui_spacer
+    ).midright
     white_counter_rect.bottomright = board_bounds.move(
-        -UI_SPACER, 2 * UI_SPACER
+        -UI_SPACER, horizontal_ui_spacer
     ).midleft
 
     spawn(
@@ -281,7 +284,7 @@ def create_tooltip_surface(text: str, font: pygame.font.Font) -> pygame.Surface:
 def show_tooltip(context: AppContext, sprite_id: SpriteID) -> None:
     """Triggered on HOVER_ENTER: builds and stores tooltip surface."""
     info = context.game.sprites.get(sprite_id)
-    if not info or not getattr(info, "tooltip", None):
+    if not info or info.tooltip:
         return
     context.game.input_state.active_tooltip_sprite = sprite_id
     context.game.input_state.pending_tooltip_sprite = None

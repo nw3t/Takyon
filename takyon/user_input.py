@@ -5,19 +5,19 @@ Track what the user is doing
 from .takyon_types import AppContext, SpriteID, RenderingParams
 from .takyon_const import WINDOW_H, WINDOW_W
 from .interactions import hover_enter_callbacks, hover_exit_callbacks
-import sys
 import pygame
 
 
-def handle_pygame_events(context: AppContext) -> None:
+def handle_pygame_events(context: AppContext) -> bool:
     """
     :param context:
     :return:
     """
+    running = True
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+            running = False
+            return running
         if event.type == pygame.WINDOWRESIZED:
             window_w: int = event.x
             window_h: int = event.y
@@ -30,6 +30,7 @@ def handle_pygame_events(context: AppContext) -> None:
                 0, 0, scaled_canvas_w, scaled_canvas_h
             )
             context.render.display_target.center = (window_w // 2, window_h // 2)
+    return running
 
 
 def update_hovered_sprites(context: AppContext) -> tuple[set[SpriteID], set[SpriteID]]:
@@ -49,16 +50,17 @@ def update_hovered_sprites(context: AppContext) -> tuple[set[SpriteID], set[Spri
     return entered_sprites, exited_sprites
 
 
-def user_inputs(context: AppContext) -> None:
+def user_inputs(context: AppContext) -> bool:
     """
     take user inputs and respond
     :param context:
     :return:
     """
-    handle_pygame_events(context)
+    running = handle_pygame_events(context)
     hover_entered, hover_exited = update_hovered_sprites(context)
     hover_enter_callbacks(context, hover_entered)
     hover_exit_callbacks(context, hover_exited)
+    return running
 
 
 def mouse_on_canvas(

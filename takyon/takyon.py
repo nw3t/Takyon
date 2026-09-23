@@ -47,11 +47,13 @@ def game_loop(
     :param context:
     :return:
     """
-    while True:
+    running = True
+    while running:
         update_clocks(context)
-        user_inputs(context)
+        running = user_inputs(context)
         update_tooltips(context)
         render_sprites(context)
+    pygame.quit()
 
 
 if __name__ == "__main__":

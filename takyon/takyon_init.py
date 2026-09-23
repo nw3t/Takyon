@@ -54,7 +54,15 @@ def initialize_takyon_context() -> AppContext:
         Player.WHITE: CLOCK_START_SECONDS,
     }
     board_choice: Dimension = 6
-    input_state: InputState = InputState(set(), None, 0, None, None, None, None, None)
+    input_state: InputState = InputState(
+        hovered_sprites=set(),
+        dragged_sprite=None,
+        last_click_time=0,
+        last_clicked_sprite=None,
+        active_tooltip_sprite=None,
+        active_tooltip=None,
+        pending_tooltip_sprite=None,
+        hover_start_time=None)
     stones: int = BOARD_DIMS[board_choice].stones
     capstones: int = BOARD_DIMS[board_choice].capstones
     stone_count: StoneCount = StoneCount(
@@ -78,13 +86,13 @@ def initialize_takyon_context() -> AppContext:
     #####################
     # Load single images
     textures: dict[Texture, pygame.Surface] = {
-        Texture("Bg"): pygame.image.load(SINGLES_DIR / "Bg.png").convert_alpha(),
-        Texture("Board"): pygame.image.load(SINGLES_DIR / "Board.png").convert_alpha(),
-        Texture("Tile"): pygame.image.load(SINGLES_DIR / "Tile.png").convert_alpha(),
-        Texture("BlackClock"): pygame.image.load(
+        Texture.BG: pygame.image.load(SINGLES_DIR / "Bg.png").convert_alpha(),
+        Texture.BOARD: pygame.image.load(SINGLES_DIR / "Board.png").convert_alpha(),
+        Texture.TILE: pygame.image.load(SINGLES_DIR / "Tile.png").convert_alpha(),
+        Texture.BLACK_CLOCK: pygame.image.load(
             SINGLES_DIR / "BlackClock.png"
         ).convert_alpha(),
-        Texture("WhiteClock"): pygame.image.load(
+        Texture.WHITE_CLOCK: pygame.image.load(
             SINGLES_DIR / "WhiteClock.png"
         ).convert_alpha(),
     }

@@ -22,7 +22,7 @@ TYPE_Z_LAYERS = {
     SpriteType.STONE: 3,
 }
 
-SEE_THROUGH_TEXTURES: tuple[Texture, Texture] = (
+SEE_THROUGH_TEXTURES: tuple[Texture, ...] = (
     Texture.BLACK_STANDING,
     Texture.WHITE_STANDING,
 )
