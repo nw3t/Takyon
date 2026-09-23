@@ -2,12 +2,36 @@
 Draw to the screen
 """
 
-from .takyon_const import SHADOW_OFFSET, BLACK, TYPE_Z_LAYERS, SEE_THROUGH_TEXTURES
+from .takyon_const import SHADOW_OFFSET, BLACK, TYPE_Z_LAYERS, SEE_THROUGH_TEXTURES, TOOLTIP_OFFSET_X, TOOLTIP_OFFSET_Y, TOOLTIP_CLAMP_MARGIN
 from .takyon_types import AppContext, SpriteType
-from .takyon_ui import draw_active_tooltip
+from .user_input import mouse_on_canvas
 import pygame
 
 
+def draw_active_tooltip(context: AppContext) -> None:
+    """
+    :param context:
+    :return:
+    """
+    tooltip = context.game.input_state.active_tooltip
+    if tooltip is None:
+        return
+
+    canvas_mouse = mouse_on_canvas(context.render)
+    mouse_x, mouse_y = canvas_mouse
+
+    rect = tooltip.get_rect(
+        topleft=(mouse_x + TOOLTIP_OFFSET_X, mouse_y + TOOLTIP_OFFSET_Y)
+    )
+
+    # flipflop left and right to avoid going off the screen
+    canvas_rect = context.render.canvas.get_rect()
+    if rect.right > canvas_rect.right:
+        rect.right = mouse_x - TOOLTIP_CLAMP_MARGIN
+    if rect.bottom > canvas_rect.bottom:
+        rect.bottom = mouse_y - TOOLTIP_CLAMP_MARGIN
+
+    context.render.canvas.blit(tooltip, rect)
 def render_text_with_shadow(
     font: pygame.font.Font, text: str, fg: pygame.Color, shadow: pygame.Color
 ) -> pygame.Surface:
