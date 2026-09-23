@@ -62,7 +62,8 @@ def initialize_takyon_context() -> AppContext:
         active_tooltip_sprite=None,
         active_tooltip=None,
         pending_tooltip_sprite=None,
-        hover_start_time=None)
+        hover_start_time=None,
+    )
     stones: int = BOARD_DIMS[board_choice].stones
     capstones: int = BOARD_DIMS[board_choice].capstones
     stone_count: StoneCount = StoneCount(
