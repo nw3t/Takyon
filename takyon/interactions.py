@@ -80,7 +80,6 @@ def spawn_stone_at_mouse(_context: AppContext, _sprite_id: SpriteID) -> None:
     Passed as a callback to put a white or black stone in your hand, if one's already in your hand, put it back
     :return:
     """
-    print("I got triggered!")
 
 
 def spawn_capstone_at_mouse(_context: AppContext, _sprite_id: SpriteID) -> None:
