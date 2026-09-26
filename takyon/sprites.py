@@ -10,7 +10,7 @@ from .types import (
     SpriteInfo,
     SpriteType,
 )
-from .const import NEXT_ID, Texture
+from .const import Texture
 import pygame
 
 
@@ -36,7 +36,7 @@ def spawn_from_surface(
     :param tooltip:
     :return:
     """
-    sprite_id = SpriteID(next(NEXT_ID))
+    sprite_id = SpriteID(next(context.game.next_id))
     info = SpriteInfo(
         sprite_type,
         surface,
@@ -74,7 +74,7 @@ def spawn(
     :param tooltip:
     :return:
     """
-    sprite_id: SpriteID = SpriteID(next(NEXT_ID))
+    sprite_id: SpriteID = SpriteID(next(context.game.next_id))
     scaled_sprite = pygame.transform.scale(context.render.textures[texture], rect.size)
     info: SpriteInfo = SpriteInfo(
         sprite_type,

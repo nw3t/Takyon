@@ -3,8 +3,6 @@ all the constants all the time
 """
 
 from .types import Texture, SpriteType, BoardSetup, Stones
-from collections.abc import Iterator
-from itertools import count
 from pathlib import Path
 import pygame
 
@@ -75,5 +73,3 @@ TOOLTIP_DELAY = 1000.0
 TOOLTIP_OFFSET_X = 14
 TOOLTIP_OFFSET_Y = 13
 TOOLTIP_PADDING = 8
-
-NEXT_ID: Iterator[int] = count(0)

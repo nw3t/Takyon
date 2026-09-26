@@ -30,6 +30,7 @@ from .const import (
     WINDOW_W,
 )
 from collections import defaultdict
+from itertools import count
 import json
 import pygame
 
@@ -82,6 +83,7 @@ def initialize_takyon_context() -> AppContext:
         active_player=Player.BLACK,
         timer=timer,
         input_state=input_state,
+        next_id = count(0)
     )
 
     #####################

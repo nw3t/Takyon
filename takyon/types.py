@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Literal, NewType, Callable
+from collections.abc import Iterator
 import pygame
 
 Dimension = Literal[3, 4, 5, 6, 8]
@@ -113,7 +114,7 @@ class GameState:
     active_player: Player
     timer: Timer
     input_state: InputState
-
+    next_id: Iterator[int]
 
 @dataclass
 class RenderingParams:
