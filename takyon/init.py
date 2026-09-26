@@ -57,6 +57,7 @@ def initialize_takyon_context() -> AppContext:
     board_choice: Dimension = 6
     input_state: InputState = InputState(
         hovered_sprites=set(),
+        clicked_down_sprite=None,
         dragged_sprite=None,
         last_click_time=0,
         last_clicked_sprite=None,
@@ -83,7 +84,7 @@ def initialize_takyon_context() -> AppContext:
         active_player=Player.BLACK,
         timer=timer,
         input_state=input_state,
-        next_id = count(0)
+        next_id=count(0),
     )
 
     #####################

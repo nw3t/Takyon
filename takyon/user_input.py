@@ -2,10 +2,37 @@
 Track what the user is doing
 """
 
-from .types import AppContext, SpriteID, RenderingParams, InteractionType
+from .types import AppContext, SpriteID, RenderingParams, InteractionType, SpriteInfo
 from .const import WINDOW_H, WINDOW_W, MOUSE_BINDINGS
-from .interactions import hover_enter_callbacks, hover_exit_callbacks
+from .interactions import (
+    INTERACTION_CALLBACKS,
+    Interactable,
+    hover_enter_callbacks,
+    hover_exit_callbacks,
+)
 import pygame
+
+
+def get_top_sprite(context: AppContext, sprites: set[SpriteID]) -> SpriteID | None:
+    """
+    from our set of sprites, return the one with the highest render_count if any
+    :param context:
+    :param sprites:
+    :return:
+    """
+    highest: SpriteID | None = None
+    render_count: int | None = None
+    for sprite_id in sprites:
+        sprite = context.game.sprites[sprite_id]
+        if sprite.render_count is None:
+            continue
+        if highest is None:
+            highest = sprite_id
+            render_count = sprite.render_count
+        elif sprite.render_count > render_count:
+            highest = sprite_id
+            render_count = sprite.render_count
+    return highest
 
 
 def handle_pygame_events(context: AppContext) -> bool:
@@ -17,15 +44,34 @@ def handle_pygame_events(context: AppContext) -> bool:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
         if event.type == pygame.MOUSEBUTTONUP:
             sprites: set[SpriteID] = get_hovered_sprites(context)
             interaction: InteractionType | None = MOUSE_BINDINGS.get(event.button)
             if interaction is None:
                 continue
-            interactable = sprites
-            callback = INTERACTION_CALLBACKS
+            top_sprite: SpriteID | None = get_top_sprite(context, sprites)
+            if top_sprite is None:
+                continue
+            click_match = top_sprite == context.game.input_state.clicked_down_sprite
+            context.game.input_state.clicked_down_sprite = None
+            if not click_match:
+                continue
+            interactable = context.game.sprites[top_sprite].interactable
+            if interactable is None:
+                continue
+            callback = INTERACTION_CALLBACKS.get((interactable, interaction))
+            if callback is not None:
+                callback(context, top_sprite)
 
-            pass
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            sprites: set[SpriteID] = get_hovered_sprites(context)
+            interaction: InteractionType | None = MOUSE_BINDINGS.get(event.button)
+            if interaction is None:
+                continue
+            top_sprite: SpriteID | None = get_top_sprite(context, sprites)
+            context.game.input_state.clicked_down_sprite = top_sprite
+
         if event.type == pygame.WINDOWRESIZED:
             window_w: int = event.x
             window_h: int = event.y
@@ -38,6 +84,7 @@ def handle_pygame_events(context: AppContext) -> bool:
                 0, 0, scaled_canvas_w, scaled_canvas_h
             )
             context.render.display_target.center = (window_w // 2, window_h // 2)
+
     return running
 
 

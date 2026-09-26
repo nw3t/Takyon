@@ -181,6 +181,7 @@ class InputState:
     """
 
     hovered_sprites: set[SpriteID]
+    clicked_down_sprite: SpriteID | None
     dragged_sprite: SpriteID | None
     last_click_time: int
     last_clicked_sprite: SpriteID | None
@@ -214,7 +215,7 @@ class SpriteInfo(pygame.sprite.Sprite):
     player: Player | None
     interactable: Interactable | None
     tooltip: str | None
-    render_count: count | None
+    render_count: int | None
 
     def __init__(
         self,
@@ -226,7 +227,6 @@ class SpriteInfo(pygame.sprite.Sprite):
         player: Player | None,
         interactable: Interactable | None,
         tooltip: str | None,
-        render_count: count | None = None,
         *groups: pygame.sprite.AbstractGroup,
     ):
         assert not groups, (
