@@ -5,6 +5,7 @@ Draw to the screen
 from .const import SHADOW_OFFSET, BLACK, TYPE_Z_LAYERS, SEE_THROUGH_TEXTURES, TOOLTIP_OFFSET_X, TOOLTIP_OFFSET_Y, TOOLTIP_CLAMP_MARGIN
 from .types import AppContext, SpriteType
 from .user_input import mouse_on_canvas
+from itertools import count
 import pygame
 
 
@@ -62,6 +63,10 @@ def render_sprites(context: AppContext) -> None:
     :param context:
     :return:
     """
+    for sprite_info in context.game.sprites.values():
+        sprite_info.render_count = None
+    render_count: count = count(0)
+
     context.render.window.fill(BLACK)
     # everything that's not a stone gets blitted in order of the TYPE_Z_LAYERS dict
     non_stones = (
@@ -73,6 +78,7 @@ def render_sprites(context: AppContext) -> None:
     ):
         rect: pygame.Rect = sprite_info.rect
         sprite: pygame.Surface = sprite_info.sprite
+        sprite_info.render_count = next(render_count)
         context.render.canvas.blit(sprite, rect)
 
     # stones fetched from the board will be in lists of 1-8 members and only the top two will ever be blitted
@@ -83,7 +89,9 @@ def render_sprites(context: AppContext) -> None:
         second = sprite_list[-2] if len(sprite_list) >= 2 else None
 
         if second and top.texture in SEE_THROUGH_TEXTURES:
+            second.render_count = next(render_count)
             context.render.canvas.blit(second.sprite, second.rect)
+        top.render_count = next(render_count)
         context.render.canvas.blit(top.sprite, top.rect)
 
     draw_active_tooltip(context)

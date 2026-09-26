@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Literal, NewType, Callable
 from collections.abc import Iterator
+from itertools import count
 import pygame
 
 Dimension = Literal[3, 4, 5, 6, 8]
@@ -92,6 +93,11 @@ class InteractionType(Enum):
 
     LEFT_CLICK = auto()
     RIGHT_CLICK = auto()
+    MIDDLE_CLICK = auto()
+    SCROLL_UP = auto()
+    SCROLL_DOWN = auto()
+    FORWARD = auto()
+    BACK = auto()
     LEFT_DRAG_START = auto()
     LEFT_DRAG_STOP = auto()
     RIGHT_DRAG_START = auto()
@@ -208,6 +214,7 @@ class SpriteInfo(pygame.sprite.Sprite):
     player: Player | None
     interactable: Interactable | None
     tooltip: str | None
+    render_count: count | None
 
     def __init__(
         self,
@@ -219,6 +226,7 @@ class SpriteInfo(pygame.sprite.Sprite):
         player: Player | None,
         interactable: Interactable | None,
         tooltip: str | None,
+        render_count: count | None = None,
         *groups: pygame.sprite.AbstractGroup,
     ):
         assert not groups, (

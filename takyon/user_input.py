@@ -2,8 +2,8 @@
 Track what the user is doing
 """
 
-from .types import AppContext, SpriteID, RenderingParams
-from .const import WINDOW_H, WINDOW_W
+from .types import AppContext, SpriteID, RenderingParams, InteractionType
+from .const import WINDOW_H, WINDOW_W, MOUSE_BINDINGS
 from .interactions import hover_enter_callbacks, hover_exit_callbacks
 import pygame
 
@@ -17,6 +17,15 @@ def handle_pygame_events(context: AppContext) -> bool:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.MOUSEBUTTONUP:
+            sprites: set[SpriteID] = get_hovered_sprites(context)
+            interaction: InteractionType | None = MOUSE_BINDINGS.get(event.button)
+            if interaction is None:
+                continue
+            interactable = sprites
+            callback = INTERACTION_CALLBACKS
+
+            pass
         if event.type == pygame.WINDOWRESIZED:
             window_w: int = event.x
             window_h: int = event.y

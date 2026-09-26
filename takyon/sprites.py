@@ -11,6 +11,7 @@ from .types import (
     SpriteType,
 )
 from .const import Texture
+from itertools import count
 import pygame
 
 
